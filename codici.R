@@ -1,14 +1,18 @@
-library("tidyverse")
-library("readxl")
-library("here")
-library("lubridate")
-library("zoo")
-library("hrbrthemes")
+# library("tidyverse")
+# library("readxl")
+# library("here")
+# library("lubridate")
+# library("zoo")
+# library("hrbrthemes")
+
+source("librerie.R")
 
 dati <- read_excel("data/Dati epidemiogici RV_2016-2019-070621.xlsx")
 
 dt <- dati %>% 
-  mutate(codaz = str_to_upper(codaz), 
+  mutate( nconf = str_remove_all(nconf, " "),
+          nconf = str_c(year, nconf), 
+    codaz = str_to_upper(codaz), 
          codaz = gsub("[[:punct:][:blank:]]","", codaz), 
          ageclass = str_remove(ageclass, "Suino"), 
          prelievo = str_c(day, "-", month, "-", year), 
@@ -19,7 +23,8 @@ dt <- dati %>%
          rva = ifelse(RVA == "P", "RVA", 0),
          rvb = ifelse(RVB == "P", "RVB", 0), 
          rvc = ifelse(RVC == "P", "RVC", 0), 
-         rvh = ifelse(RVH == "P", "RVH", 0), 
+         rvh = ifelse(RVH == "P", "RVH", 0),
+         rv = ifelse(RV == "P", "RV", 0), 
          pedv = ifelse(PEDV == "P", "PEDV", 0),
          coli = ifelse(ecoli == "P", "EColi", 0), 
          lawsonia = ifelse(Lawsonia == "P", "Lawsonia", 0), 
@@ -30,27 +35,49 @@ dt <- dati %>%
 
 
 
-dt[, 28:38] <- dt[, 28:38]!=0
+dt[, c(28:31, 33:39)] <- dt[, c(28:31, 33:39)]!=0
 
-nomi_abb<-toupper(names(dt)[28:38])
-X<-  apply(dt[, 28:38], 1, function(x) nomi_abb[x])
+nomi_abb<-toupper(names(dt)[c(28:31, 33:39)])
+X<-  apply(dt[, c(28:31, 33:39)], 1, function(x) nomi_abb[x])
 XX<-lapply(X, paste, collapse="/")
 dt$profilo<-unlist(XX)
 
-dt <- dt %>% 
-  mutate(profilo = str_remove_all(profilo, "/NA"),
-         profilo = str_remove_all(profilo, "NA/"), 
-         profilo= ifelse(profilo == "NA", "NEG", profilo))
 
-dt %>% drop_na( profilo) %>% 
-  group_by(profilo) %>% 
+
+
+nomi_abb<-toupper(names(dt)[c(32:39)])
+X<-  apply(dt[, c(32:39)], 1, function(x) nomi_abb[x])
+XX<-lapply(X, paste, collapse="/")
+dt$profilo2<-unlist(XX)
+
+
+
+
+
+
+
+
+
+dt <- dt %>% 
+  mutate(profilo2 = str_remove_all(profilo2, "/NA"),
+         profilo2 = str_remove_all(profilo2, "NA/"), 
+         profilo2= ifelse(profilo2 == "NA", "NEG", profilo2))
+
+
+
+
+
+
+
+dt %>% drop_na( profilo2) %>% 
+  group_by(profilo2) %>% 
 summarise(n = n()) %>% 
  mutate(frq = n/sum(n)) %>% 
-  mutate(profilo = fct_reorder(profilo,frq)) %>% 
+  mutate(profilo2 = fct_reorder(profilo2,frq)) %>% 
   top_n(30) %>% 
-  ggplot(aes(x = profilo ,  y = frq, label = frq)) +
-  geom_segment( aes(x=profilo, xend=profilo, y=0, yend=n), color="grey")+
-  geom_point( aes(x=profilo, y=n), size=4.5, color="steelblue" )+
+  ggplot(aes(x = profilo2 ,  y = frq, label = frq)) +
+  geom_segment( aes(x=profilo2, xend=profilo2, y=0, yend=n), color="grey")+
+  geom_point( aes(x=profilo2, y=n), size=4.5, color="steelblue" )+
   #geom_text(color="black", size=2)+
   coord_flip()+
   theme_ipsum_rc()+
