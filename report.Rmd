@@ -37,7 +37,17 @@ dt <- dati %>%
 
 # Guarda i dati
 
-```{r}
-head(dati)
+```{r fig.height=8, fig.width=10, message=FALSE, warning=FALSE, paged.print=FALSE}
+dt %>% 
+  count(M = floor_date(dtprelievo, "week")) %>% 
+  mutate(m = rollmean(n, k = 4, fill = NA) )%>%   
+  ggplot(aes(M, n))+
+  geom_line()+
+  geom_line(aes(x=M, y=m), col = "blue", size = 1.5)+
+  theme_ipsum_rc()+
+  labs(y="n.casi",x="", y = "")+
+  aes((dt %>% 
+        filter(RV == "P"),  )
+
 ```
 

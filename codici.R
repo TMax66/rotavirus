@@ -84,21 +84,36 @@ summarise(n = n()) %>%
   labs(y="n.coinf",x="")
 
     
+
+  
+
 dt %>% 
-  group_by(Year,Month, RV) %>% 
-  summarise(n= n()) %>% 
+  count(M = floor_date(dtprelievo, "week")) %>% 
+  mutate(m = rollmean(n, k = 4, fill = NA) )%>%   
+  ggplot(aes(M, n))+
+  geom_line()+
+  geom_line(aes(x=M, y=m), col = "blue", size = 1.5)+
+  theme_ipsum_rc()+
+  labs(y="n.coinf",x="", y = "n.casi")
+
+
+
+
+  
   pivot_wider(names_from = RV, values_from = n, values_fill = 0) %>% 
-  mutate(Prev = P/(P+N)) %>%
-  ggplot(aes(x = Month, y= Prev))+
+  mutate(
+    Casi = P+N, 
+    Prev = P/(P+N)) %>% View()
+  ggplot(aes(x = Month, y= Casi))+
   geom_line()
 
 
 dt %>% 
   group_by(dtprelievo,  RV) %>% 
-  summarise(n= n()) %>% 
-  pivot_wider(names_from = RV, values_from = n, values_fill = 0) %>% 
+  summarise(n= n()) %>% View()
+  pivot_wider(names_from = RV, values_from = n, values_fill = 0) %>% View()
   mutate(Prev = P/(P+N)) %>% 
-  ggplot(aes(x = dtprelievo, y= Prev))+
+  ggplot(aes(x = dtprelievo, y= n))+
   geom_line()
 
 
