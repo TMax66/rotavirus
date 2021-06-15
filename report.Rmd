@@ -15,6 +15,7 @@ dt <- dati %>%
     codaz = str_to_upper(codaz), 
          codaz = gsub("[[:punct:][:blank:]]","", codaz), 
          ageclass = str_remove(ageclass, "Suino"), 
+         ageclass = str_remove(ageclass, "suino"),
          prelievo = str_c(day, "-", month, "-", year), 
          dtprelievo = dmy(prelievo), 
          Year = year(dtprelievo), 
@@ -35,19 +36,160 @@ dt <- dati %>%
 ```
 
 
-# Guarda i dati
+## Guarda i dati
 
-```{r fig.height=8, fig.width=10, message=FALSE, warning=FALSE, paged.print=FALSE}
+```{r echo=FALSE}
 dt %>% 
-  count(M = floor_date(dtprelievo, "week")) %>% 
-  mutate(m = rollmean(n, k = 4, fill = NA) )%>%   
+count()
+```
+
+
+
+
+
+```{r echo=FALSE, fig.height=8, fig.width=15, message=FALSE, warning=FALSE}
+p1 <- dt %>% 
+  count(M = floor_date(dtprelievo, "month")) %>% 
+  mutate(m = rollmean(n, k = 3, fill = NA) )%>%   
   ggplot(aes(M, n))+
   geom_line()+
   geom_line(aes(x=M, y=m), col = "blue", size = 1.5)+
   theme_ipsum_rc()+
-  labs(y="n.casi",x="", y = "")+
-  aes((dt %>% 
-        filter(RV == "P"),  )
+  labs(y="n.casi",x="", y = "")
+
+
+
+p2 <- dt %>% group_by(ageclass) %>% 
+  count(M = floor_date(dtprelievo, "month")) %>% 
+  mutate(m = rollmean(n, k = 3, fill = NA) )%>% 
+  ggplot(aes(M, n))+
+  geom_line()+
+  facet_wrap(.~ageclass)+
+  geom_line(aes(x=M, y=m), col = "blue", size = 1.5)+
+  theme_ipsum_rc()+
+  labs(y="n.casi",x="", y = "")
+
+p1|p2
+```
+
+
+```{r echo=FALSE, fig.height=8, fig.width=15, message=FALSE, warning=FALSE, paged.print=FALSE}
+
+
+p3 <- dt %>% 
+  filter(RV == "P") %>% 
+  count(M = floor_date(dtprelievo, "month")) %>% 
+  mutate(m = rollmean(n, k = 3, fill = NA) )%>%   
+  ggplot(aes(M, n))+
+  geom_line()+
+  geom_line(aes(x=M, y=m), col = "red", size = 1.5)+
+  theme_ipsum_rc()+
+  labs(y="RV n.casi",x="", y = "")
+
+p4 <- dt %>% 
+  filter(ecoli == "P") %>% 
+  count(M = floor_date(dtprelievo, "month")) %>% 
+  mutate(m = rollmean(n, k = 3, fill = NA) )%>%   
+  ggplot(aes(M, n))+
+  geom_line()+
+  geom_line(aes(x=M, y=m), col = "brown", size = 1.5)+
+  theme_ipsum_rc()+
+  labs(y="Ecoli n.casi",x="", y = "")
+
+ p3|p4
+
+```
+
+
+
+
+### Struttura gerarchica
+
+I dati provengono da 371 aziende cosi distribuite:
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+dt %>% 
+  group_by(annoreg, codaz) %>% 
+  count() %>% 
+  distinct(codaz) %>% 
+  ungroup() %>% 
+  group_by(annoreg) %>% 
+  count() %>% 
+  left_join(
+    (dt %>% 
+      group_by(annoreg, codaz) %>% 
+   count() %>% 
+     ungroup() %>% 
+     group_by(annoreg) %>% 
+     summarise(nconf = sum(n))
+    
+  ),  by = c("annoreg")) %>% 
+  kbl() %>% 
+  kable_styling()
+  
+  
+```
+
+```{r}
+dt %>% 
+  group_by(annoreg, ageclass) %>% 
+  count() %>% 
+  pivot_wider(names_from = "ageclass", values_from = n) %>% 
+  kbl() %>% 
+  kable_styling()
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+dt %>% 
+  group_by(annoreg, codaz) %>% 
+  distinct() %>% 
+  summarise(n = n()) %>% 
+ # pivot_wider(names_from = annoreg, values_from = n) %>% 
+  ggplot(aes(y=n))+
+  coord_flip()+
+  geom_bar(stat = "count")+
+  facet_wrap(.~annoreg)+
+  theme_ipsum_rc()
+  
+
+
+```
+
+## Profili di coinfezione
+Oltre 150 profili di coinfezione
+
+Distribuzione dei primi 30 profili di coinfezione più frequenti
+```{r echo=FALSE, fig.height=10, fig.width=15, message=FALSE, warning=FALSE}
+dt[, c(28:31, 33:39)] <- dt[, c(28:31, 33:39)]!=0
+
+nomi_abb<-toupper(names(dt)[c(28:31, 33:39)])
+X<-  apply(dt[, c(28:31, 33:39)], 1, function(x) nomi_abb[x])
+XX<-lapply(X, paste, collapse="/")
+dt$profilo<-unlist(XX)
+
+
+dt <- dt %>% 
+  mutate(profilo = str_remove_all(profilo, "/NA"),
+         profilo = str_remove_all(profilo, "NA/"), 
+         profilo= ifelse(profilo == "NA", "NEG", profilo))
+
+
+dt %>% drop_na( profilo) %>% 
+  group_by(profilo) %>% 
+  summarise(n = n()) %>% 
+  mutate(frq = n/sum(n)) %>% 
+  mutate(profilo = fct_reorder(profilo,frq)) %>% 
+  top_n(30) %>% 
+  ggplot(aes(x = profilo ,  y = n, label = round(100*frq, 2))) +
+  coord_flip()+
+  geom_point( aes(x=profilo, y=n), size=12.5, color="lightgrey" )+
+  geom_text(aes(x = profilo, y = n), color="black", size=4.5)+
+  geom_segment( aes(x=profilo, xend=profilo, y=0, yend=n), color="grey")+
+  theme_ipsum_rc()+
+  labs(y="n.coinf",x="")
 
 ```
 

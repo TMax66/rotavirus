@@ -14,7 +14,8 @@ dt <- dati %>%
           nconf = str_c(year, nconf), 
     codaz = str_to_upper(codaz), 
          codaz = gsub("[[:punct:][:blank:]]","", codaz), 
-         ageclass = str_remove(ageclass, "Suino"), 
+         ageclass = str_remove(ageclass, "Suino"),
+         ageclass = str_remove(ageclass, "suino"),
          prelievo = str_c(day, "-", month, "-", year), 
          dtprelievo = dmy(prelievo), 
          Year = year(dtprelievo), 
@@ -43,47 +44,58 @@ XX<-lapply(X, paste, collapse="/")
 dt$profilo<-unlist(XX)
 
 
-
-
-nomi_abb<-toupper(names(dt)[c(32:39)])
-X<-  apply(dt[, c(32:39)], 1, function(x) nomi_abb[x])
-XX<-lapply(X, paste, collapse="/")
-dt$profilo2<-unlist(XX)
-
-
-
-
-
-
-
-
-
 dt <- dt %>% 
-  mutate(profilo2 = str_remove_all(profilo2, "/NA"),
-         profilo2 = str_remove_all(profilo2, "NA/"), 
-         profilo2= ifelse(profilo2 == "NA", "NEG", profilo2))
+  mutate(profilo = str_remove_all(profilo, "/NA"),
+         profilo = str_remove_all(profilo, "NA/"), 
+         profilo= ifelse(profilo == "NA", "NEG", profilo))
 
 
-
-
-
-
-
-dt %>% drop_na( profilo2) %>% 
-  group_by(profilo2) %>% 
-summarise(n = n()) %>% 
- mutate(frq = n/sum(n)) %>% 
-  mutate(profilo2 = fct_reorder(profilo2,frq)) %>% 
+dt %>% drop_na( profilo) %>% 
+  group_by(profilo) %>% 
+  summarise(n = n()) %>% 
+  mutate(frq = n/sum(n)) %>% 
+  mutate(profilo = fct_reorder(profilo,frq)) %>% 
   top_n(30) %>% 
-  ggplot(aes(x = profilo2 ,  y = frq, label = frq)) +
-  geom_segment( aes(x=profilo2, xend=profilo2, y=0, yend=n), color="grey")+
-  geom_point( aes(x=profilo2, y=n), size=4.5, color="steelblue" )+
-  #geom_text(color="black", size=2)+
+  ggplot(aes(x = profilo ,  y = n, label = round(100*frq, 2))) +
   coord_flip()+
+  geom_point( aes(x=profilo, y=n), size=12, color="steelblue" )+
+  geom_text(aes(x = profilo, y = n), color="white", size=4)+
+  geom_segment( aes(x=profilo, xend=profilo, y=0, yend=n), color="grey")+
   theme_ipsum_rc()+
   labs(y="n.coinf",x="")
 
-    
+
+
+
+# nomi_abb<-toupper(names(dt)[c(32:39)])
+# X<-  apply(dt[, c(32:39)], 1, function(x) nomi_abb[x])
+# XX<-lapply(X, paste, collapse="/")
+# dt$profilo2<-unlist(XX)
+# 
+# dt <- dt %>% 
+#   mutate(profilo2 = str_remove_all(profilo2, "/NA"),
+#          profilo2 = str_remove_all(profilo2, "NA/"), 
+#          profilo2= ifelse(profilo2 == "NA", "NEG", profilo2))
+# 
+# dt %>% drop_na( profilo2) %>% 
+#   group_by(profilo2) %>% 
+# summarise(n = n()) %>% 
+#  mutate(frq = n/sum(n)) %>% 
+#   mutate(profilo2 = fct_reorder(profilo2,frq)) %>% 
+#   top_n(30) %>% 
+#   ggplot(aes(x = profilo2 ,  y = frq, label = frq)) +
+#   geom_segment( aes(x=profilo2, xend=profilo2, y=0, yend=n), color="grey")+
+#   geom_point( aes(x=profilo2, y=n), size=4.5, color="steelblue" )+
+#   #geom_text(color="black", size=2)+
+#   coord_flip()+
+#   theme_ipsum_rc()+
+#   labs(y="n.coinf",x="")
+# 
+#     
+# 
+# 
+
+
 
   
 
