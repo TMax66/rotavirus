@@ -182,6 +182,7 @@ dt %>% drop_na( profilo) %>%
   summarise(n = n()) %>% 
   mutate(frq = n/sum(n)) %>% 
   mutate(profilo = fct_reorder(profilo,frq)) %>% 
+  #writexl::write_xlsx(., path = "profili.xlsx")
   top_n(30) %>% 
   ggplot(aes(x = profilo ,  y = n, label = round(100*frq, 2))) +
   coord_flip()+
