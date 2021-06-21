@@ -138,6 +138,39 @@ dt %>% filter(RVA == "P" & RVH == "P") %>%
 
 
 
+#analisi corrispondenze multiple (* subset del data frame con colonne gli agenti patogeni indagati e 
+
+dummydf<-as.data.frame(model.matrix(~ . + 0, data=df[, c(2,5:14)]*, contrasts.arg = lapply(df[, c(2,5:14)], contrasts, contrasts=FALSE)))
+df<-data.frame("Specieagg"=df[, 2],dummydf)
+
+tabella<-  df %>% 
+  group_by(Specieagg) %>% 
+  summarise_all(funs(sum)) %>% 
+  column_to_rownames(var="Specieagg") %>% 
+  as.data.frame()
+#tabella<-tabella[,-37]
+
+res.ca<-CA(tabella[,c(12:31)], graph = FALSE)
+fviz_screeplot(res.ca, addlabels = TRUE, ylim = c(0, 60))+
+  geom_hline(yclass=2.27, linetype=2, color="red")
+fviz_ca_biplot(res.ca, repel = TRUE)
+fviz_ca_row(res.ca, repel = TRUE)
+fviz_ca_row(res.ca, col.row = "cos2",
+            gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"), 
+            repel = TRUE)
+
+fviz_ca_row(res.ca, col.row = "contrib",
+            gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"), 
+            repel = TRUE)
+fviz_ca_col(res.ca, col.col = "cos2", 
+            gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+            repel = TRUE)
+
+fviz_ca_biplot(res.ca, 
+               map ="colprincipal", arrow = c(TRUE, TRUE),
+               repel = TRUE)
+
+
 
 
  
