@@ -149,9 +149,10 @@ dummydt <- dt %>%
 
 df<-data.frame(dt[, 9],dummydt)
 
-tabella<-  df %>% 
+tabella <-  df %>% 
   group_by(ageclass) %>% 
-  summarise_all(sum, na.rm = T) %>% 
+  summarise_all(sum, na.rm = T)  %>% 
+  select(ageclass, ends_with("P")) %>% 
   column_to_rownames(var="ageclass") %>% 
   as.data.frame()
  
@@ -161,5 +162,10 @@ res.ca<-CA(tabella, graph = FALSE)
 summary(res.ca)
 fviz_screeplot(res.ca, addlabels = TRUE, ylim = c(0, 50))
 fviz_screeplot(res.ca) +
-  geom_hline(yintercept=8.3, linetype=2, color="red")
+  geom_hline(yintercept=11.1, linetype=2, color="red")
 fviz_ca_biplot(res.ca, repel = TRUE)
+
+
+fviz_ca_biplot(res.ca, 
+               map ="colprincipal", arrow = c(TRUE, TRUE),
+               repel = TRUE)
