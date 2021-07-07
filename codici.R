@@ -160,7 +160,7 @@ tabella <-  df %>%
 
 res.ca<-CA(tabella, graph = FALSE)
 summary(res.ca)
-fviz_screeplot(res.ca, addlabels = TRUE, ylim = c(0, 50))
+fviz_screeplot(res.ca, addlabels = TRUE, ylim = c(0, 100))
 fviz_screeplot(res.ca) +
   geom_hline(yintercept=11.1, linetype=2, color="red")
 fviz_ca_biplot(res.ca, repel = TRUE)
