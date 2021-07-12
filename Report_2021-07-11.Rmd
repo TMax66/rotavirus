@@ -1,0 +1,58 @@
+---
+title: 'Correspondence Analysis'
+author: 'Dataset tabella'
+output:
+  html_document: default
+---
+This dataset contains 5 rows and 10 columns.
+
+- - -
+
+```{r, echo = FALSE}
+library(FactoMineR)
+load('C:/Users/vito.tranquillo/Desktop/Git Projects/rotavirus/Workspace.RData')
+```
+### 1. Study of the outliers
+The detection of outliers does not apply to CA results.
+
+### 2. Inertia distribution
+The inertia of the first dimensions shows if there are strong relationships between variables and suggests the number of dimensions that should be studied.
+
+The first two dimensions of analyse express **95.23%** of the total dataset inertia ; that means that 95.23% of the rows (or columns) cloud total variability is explained by the plane.
+This percentage is particularly high and thus the first plane perfectly represents the data variability.
+This value is greater than the reference value that equals **87.84%**, the variability explained by this plane is thus significant
+(the reference value is the 0.95-quantile of the inertia percentages distribution obtained by simulating 1703 data tables of equivalent size on the basis of a uniform distribution).
+
+From these observations, it is absolutely not necessary to interpret the next dimensions.
+
+```{r, echo = FALSE, fig.align = 'center', fig.height = 3.5, fig.width = 5.5}
+par(mar = c(2.6, 4.1, 1.1, 2.1))
+ggplot2::ggplot(cbind.data.frame(x=1:nrow(res$eig),y=res$eig[,2])) + ggplot2::aes(x=x, y=y)+ ggplot2::geom_col(fill="blue") + ggplot2::xlab("Dimension") + ggplot2::ylab("Percentage of variance") + ggplot2::ggtitle("Decomposition of the total inertia") + ggplot2::theme_light() + ggplot2::theme(plot.title = ggplot2::element_text(hjust =0.5)) + ggplot2::scale_x_continuous(breaks=1:nrow(res$eig))
+```
+
+**Figure 2 - Decomposition of the total inertia**
+*The first factor is largely dominant: it expresses itself 81.99% of the data variability.*
+*Note that in such a case, the variability related to the other components might be meaningless, despite of a high percentage.*
+
+An estimation of the right number of axis to interpret suggests to restrict the analysis to the description of the first 1 axis.
+These axis present an amount of inertia greater than those obtained by the 0.95-quantile of random distributions (81.99% against 63.03%).
+This observation suggests that only this axis is carrying a real information.
+As a consequence, the description will stand to these axis.
+
+- - -
+
+### 3. Description of the dimension 1
+
+```{r, echo = FALSE, fig.align = 'center', fig.height = 3.5, fig.width = 5.5}
+r.drawn <-
+c(" sottoscrofa", " svezzamento", " ingrasso")
+c.drawn <-
+c("Clperfr_P", "Cldiff_P", "Brachyspira_pilos_P", "Brachyspira_hyod_P", 
+"Lawsonia_P", "RVH_P", "RVC_P", "ecoli_P")
+par(mar = c(4.1, 4.1, 1.1, 2.1))
+plot.CA(res, selectRow = r.drawn, selectCol = c.drawn, axes = 1:2, choix = 'CA', invisible = c('var', 'quali'), title = '', cex = cex)
+```
+
+**Figure 3.1 - Overlayed factor map (CA)**
+*The labeled rows are those with the higher contribution to the plane construction.*
+*The labeled columns are those the best shown on the plane.*

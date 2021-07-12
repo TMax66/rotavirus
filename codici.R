@@ -35,7 +35,7 @@ dt <- dati %>%
          clperfr = ifelse(Clperfr == "P", "Clperf", 0),
          cldiff = ifelse(Cldiff == "P", "Cldiff", 0))
 
-### Profili di coeinfezione----
+A### Profili di coeinfezione----
 
 dt[, c(28:31, 33:39)] <- dt[, c(28:31, 33:39)]!=0
 
@@ -141,24 +141,66 @@ dt %>% drop_na( profilo) %>%
 
 #ANALISI DELLE CORRISPONDENZE-----
 
+library("gplots")
 
+ 
 
 dummydt <- dt %>% 
   select(11:13, 15, 17, 18:22) %>% 
   dummy_cols(remove_selected_columns = TRUE)  
 
+
+
 df<-data.frame(dt[, 9],dummydt)
+
+
+
+
+
 
 tabella <-  df %>% 
   group_by(ageclass) %>% 
   summarise_all(sum, na.rm = T)  %>% 
   select(ageclass, ends_with("P")) %>% 
   column_to_rownames(var="ageclass") %>% 
-  as.data.frame()
- 
+  as.data.frame() %>% 
+  select(1:5)   
+
+#Math CA----
+
+n <- sum(tabella)
+P = tabella / n
+
+dati %>% 
+ group_by( ageclass, RVB) %>% 
+  summarise(n = n())
 
 
+# dt <- as.table(as.matrix(tabella))
+# balloonplot(t(dt), main =" ", xlab ="", ylab="",
+#             label = FALSE, show.margins = FALSE)
+# 
+# 
+# # Create row profile
+# data.ca.row <-  tabella/rowSums(tabella)
+# View(data.ca.row)
+# mass.row <- colMeans(data.ca.row)
+# 
+# # Create column profile
+# data.ca.col = t(tabella)/colSums(tabella)
+# View(t(data.ca.col))
+# mass.col = rowMeans(t(data.ca.col))
+
+
+
+#CA
 res.ca<-CA(tabella, graph = FALSE)
+
+library(Factoshiny)
+Factoshiny(res.ca)
+
+
+
 summary(res.ca)
 fviz_screeplot(res.ca, addlabels = TRUE, ylim = c(0, 100))
 fviz_screeplot(res.ca) +
@@ -169,3 +211,76 @@ fviz_ca_biplot(res.ca, repel = TRUE)
 fviz_ca_biplot(res.ca, 
                map ="colprincipal", arrow = c(TRUE, TRUE),
                repel = TRUE)
+
+fviz_ca_row(res.ca, repel = TRUE)
+fviz_ca_row(res.ca, col.row = "cos2",
+            gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"), 
+            repel = TRUE)
+
+row <- get_ca_row(res.ca)
+library("corrplot")
+corrplot(row$cos2, is.corr=FALSE)
+fviz_cos2(res.ca, choice = "row", axes = 1:2)
+fviz_contrib(res.ca, choice = "row", axes = 1, top = 10)
+fviz_contrib(res.ca, choice = "row", axes = 2, top = 10)
+fviz_contrib(res.ca, choice = "row", axes = 1:2, top = 10)
+
+
+fviz_ca_row(res.ca, col.row = "contrib",
+            gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"), 
+            repel = TRUE)
+
+col <- get_ca_col(res.ca)
+fviz_ca_col(res.ca, col.col = "cos2", 
+            gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+            repel = TRUE)
+
+fviz_cos2(res.ca, choice = "col", axes = 1:2)
+
+fviz_ca_biplot(res.ca, 
+               map ="colprincipal", arrow = c(TRUE, TRUE),
+               repel = TRUE)
+fviz_ca_biplot(res.ca, map ="colgreen", arrow = c(TRUE, TRUE),
+               repel = TRUE)
+
+
+#Analisi delle corrispondenze multiple----
+
+dt <- dt[, c(9:13, 15, 17)]
+dt <- dt %>% 
+  na.omit()
+
+cats <- apply(dt, 2, function(x) nlevels(as.factor(x)))
+res.mca <- MCA(dt, graph = FALSE)
+
+mca1_vars_df <-  data.frame(res.mca$var$coord, Variable = rep(names(cats), 
+                                                         cats))
+mca1_obs_df <-  data.frame(res.mca$ind$coord)
+
+
+ggplot(data = mca1_obs_df, aes(x = Dim.1, y = Dim.2)) + 
+  geom_hline(yintercept = 0,colour = "gray70") + 
+  geom_vline(xintercept = 0, colour = "gray70") + 
+  geom_point(colour = "gray50", alpha = 0.7) + 
+  geom_density2d(colour = "gray80") + 
+  geom_text(data = mca1_vars_df, aes(x = Dim.1, y = Dim.2, label = rownames(mca1_vars_df), colour = Variable)) + 
+  ggtitle("MCA") + 
+  scale_colour_discrete(name = "Variable")+
+  theme_ipsum()
+
+
+
+# eig.val <- get_eigenvalue(res.mca)
+# fviz_screeplot(res.mca, addlabels = TRUE, ylim = c(0, 45))
+# 
+# fviz_mca_biplot(res.mca, 
+#                 repel = TRUE, # Avoid text overlapping (slow if many point)
+#                 ggtheme = theme_minimal())
+# 
+# fviz_mca_var(res.mca, choice = "mca.cor", 
+#              repel = TRUE, # Avoid text overlapping (slow)
+#              ggtheme = theme_minimal())
+# fviz_mca_var(res.mca, 
+#              repel = TRUE, # Avoid text overlapping (slow)
+#              ggtheme = theme_minimal())
+# fviz_ellipses(res.mca, 1:4, geom = "point")
