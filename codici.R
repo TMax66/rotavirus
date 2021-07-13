@@ -1,11 +1,12 @@
-# library("tidyverse")
-# library("readxl")
-# library("here")
-# library("lubridate")
-# library("zoo")
-# library("hrbrthemes")
+library("tidyverse")
+library("readxl")
+library("here")
+library("lubridate")
+library("zoo")
+library("hrbrthemes")
 
 source("librerie.R")
+
 
 dati <- read_excel("data/Dati epidemiogici RV_2016-2019-070621.xlsx")
 
@@ -35,7 +36,7 @@ dt <- dati %>%
          clperfr = ifelse(Clperfr == "P", "Clperf", 0),
          cldiff = ifelse(Cldiff == "P", "Cldiff", 0))
 
-A### Profili di coeinfezione----
+### Profili di coeinfezione----
 
 dt[, c(28:31, 33:39)] <- dt[, c(28:31, 33:39)]!=0
 
@@ -143,7 +144,7 @@ dt %>% drop_na( profilo) %>%
 
 library("gplots")
 
- 
+library(fastDummies)
 
 dummydt <- dt %>% 
   select(11:13, 15, 17, 18:22) %>% 
@@ -160,8 +161,8 @@ df<-data.frame(dt[, 9],dummydt)
 
 tabella <-  df %>% 
   group_by(ageclass) %>% 
-  summarise_all(sum, na.rm = T)  %>% 
-  select(ageclass, ends_with("P")) %>% 
+  summarise_all(sum, na.rm = T)  %>%  
+  select(ageclass, ends_with("P")) %>% View()
   column_to_rownames(var="ageclass") %>% 
   as.data.frame() %>% 
   select(1:5)   
@@ -172,7 +173,7 @@ n <- sum(tabella)
 P = tabella / n
 
 dati %>% 
- group_by( ageclass, RVB) %>% 
+ group_by( ageclass) %>% 
   summarise(n = n())
 
 
@@ -252,10 +253,30 @@ dt <- dt %>%
 
 cats <- apply(dt, 2, function(x) nlevels(as.factor(x)))
 res.mca <- MCA(dt, graph = FALSE)
+fviz_mca_biplot(res.mca, 
+                repel = TRUE, # Avoid text overlapping (slow if many point)
+                ggtheme = theme_minimal())
+
+fviz_mca_var(res.mca, col.var = "cos2",
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"), 
+             repel = TRUE, # Avoid text overlapping
+             ggtheme = theme_minimal())
+
+fviz_contrib(res.mca, choice = "var", axes = 1:2, top = 15)
+
+fviz_mca_var(res.mca, col.var = "contrib",
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"), 
+             repel = TRUE, # avoid text overlapping (slow)
+             ggtheme = theme_minimal()
+)
+
+fviz_ellipses(res.mca, c("PEDV", "RVA"),
+              geom = "point")
 
 mca1_vars_df <-  data.frame(res.mca$var$coord, Variable = rep(names(cats), 
                                                          cats))
 mca1_obs_df <-  data.frame(res.mca$ind$coord)
+
 
 
 ggplot(data = mca1_obs_df, aes(x = Dim.1, y = Dim.2)) + 
