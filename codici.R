@@ -1,9 +1,9 @@
-library("tidyverse")
-library("readxl")
-library("here")
-library("lubridate")
-library("zoo")
-library("hrbrthemes")
+# library("tidyverse")
+# library("readxl")
+# library("here")
+# library("lubridate")
+# library("zoo")
+# library("hrbrthemes")
 
 source("librerie.R")
 
@@ -34,7 +34,11 @@ dt <- dati %>%
          brachyod = ifelse(Brachyspira_hyod == "P", "Brachyod", 0),
          brachypil = ifelse(Brachyspira_pilos == "P", "Brachypil", 0), 
          clperfr = ifelse(Clperfr == "P", "Clperf", 0),
-         cldiff = ifelse(Cldiff == "P", "Cldiff", 0))
+         cldiff = ifelse(Cldiff == "P", "Cldiff", 0), 
+         quart = quarter(dtprelievo,fiscal_start = 11), 
+    stagione = ifelse(quart==1, "Winter", 
+                      ifelse(quart==2, "Spring", 
+                             ifelse(quart==3, "Summer", "Autumn"))))
 
 ### Profili di coeinfezione----
 
@@ -247,15 +251,22 @@ fviz_ca_biplot(res.ca, map ="colgreen", arrow = c(TRUE, TRUE),
 
 #Analisi delle corrispondenze multiple----
 
-dt <- dt[, c(9:13, 15, 17)]
+dt <- dt[, c(9:13, 15, 17, 41)]
 dt <- dt %>% 
   na.omit()
 
-cats <- apply(dt, 2, function(x) nlevels(as.factor(x)))
-res.mca <- MCA(dt, graph = FALSE)
+#cats <- apply(dt, 2, function(x) nlevels(as.factor(x)))
+
+res.mca <- MCA(dt, graph = FALSE, quali.sup = 8, ncp = 20)
+ 
+
+fviz_screeplot(res.mca, addlabels = TRUE, ylim = c(0, 45))
 fviz_mca_biplot(res.mca, 
                 repel = TRUE, # Avoid text overlapping (slow if many point)
-                ggtheme = theme_minimal())
+                ggtheme = theme_minimal(), 
+                alpha.ind = 0.3, 
+                
+                geom.ind = "point")
 
 fviz_mca_var(res.mca, col.var = "cos2",
              gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"), 
@@ -290,6 +301,12 @@ ggplot(data = mca1_obs_df, aes(x = Dim.1, y = Dim.2)) +
   theme_ipsum()
 
 
+
+##Hierarchical clustering-----
+res.hcpc <- HCPC (res.mca, graph = FALSE, max = 5)
+
+fviz_dend(res.hcpc)
+fviz_cluster(res.hcpc, geom = "point", main = "Factor map")
 
 # eig.val <- get_eigenvalue(res.mca)
 # fviz_screeplot(res.mca, addlabels = TRUE, ylim = c(0, 45))
