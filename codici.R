@@ -11,6 +11,7 @@ source("librerie.R")
 dati <- read_excel("data/Dati epidemiogici RV_2016-2019-070621.xlsx")
 
 ## data handling----
+
 dt <- dati %>% 
   mutate( nconf = str_remove_all(nconf, " "),
           nconf = str_c(year, nconf), 
@@ -73,37 +74,33 @@ dt %>% drop_na( profilo) %>%
 
 #Analisi delle corrispondenze multiple----
 
-dt <- dt[, c(9:13, 15, 17, 41)]
+dt <- dt[, c(9:13, 15, 17)]
 #plot_bar(dt)
 
 dt <- dt %>% 
   na.omit()
 
-#cats <- apply(dt, 2, function(x) nlevels(as.factor(x)))
-
-res.mca <- MCA(dt, graph = FALSE, quali.sup = 8)
+cats <- apply(dt, 2, function(x) nlevels(as.factor(x)))
 
 
-fviz_mca_ind(res.mca, 
-             label = "none", # hide individual labels
-             habillage = c("RVA", "RVB", "RVC", "RVH", "ageclass"), # color by groups 
-             addEllipses = TRUE, ellipse.type = "confidence",
-             ggtheme = theme_minimal())
+res.mca <- MCA(dt, quali.sup = 1)
+
+
+
 
 fviz_screeplot(res.mca, addlabels = TRUE, ylim = c(0, 45))
 fviz_mca_biplot(res.mca, 
-                repel = TRUE, # Avoid text overlapping (slow if many point)
+               # repel = TRUE, # Avoid text overlapping (slow if many point)
                 ggtheme = theme_minimal(), 
                 alpha.ind = 0.3, 
-                
                 geom.ind = "point")
 
 fviz_mca_var(res.mca, col.var = "cos2",
              gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"), 
-             repel = TRUE, # Avoid text overlapping
+            # repel = TRUE, # Avoid text overlapping
              ggtheme = theme_minimal())
 
-fviz_contrib(res.mca, choice = "var", axes = 1:2, top = 15)
+fviz_contrib(res.mca, choice = "ind", axes = 1, top = 20)
 
 fviz_mca_var(res.mca, col.var = "contrib",
              gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"), 
