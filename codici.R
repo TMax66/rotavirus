@@ -14,7 +14,7 @@ dati <- read_excel("data/Dati epidemiogici RV_2016-2019-070621.xlsx")
 
 dt <- dati %>% 
   mutate( nconf = str_remove_all(nconf, " "),
-          nconf = str_c(year, nconf), 
+          #nconf = str_c(year, nconf), 
     codaz = str_to_upper(codaz), 
          codaz = gsub("[[:punct:][:blank:]]","", codaz), 
          ageclass = str_remove(ageclass, "Suino"),
@@ -40,6 +40,24 @@ dt <- dati %>%
     stagione = ifelse(quart==1, "Winter", 
                       ifelse(quart==2, "Spring", 
                              ifelse(quart==3, "Summer", "Autumn"))))
+
+dt %>% 
+  group_by(codaz, day, month, year) %>% 
+  count() %>% View()
+ 
+Brachy <- dt %>% 
+  filter(!is.na(brachyod) | !is.na(brachypil)) %>% 
+  mutate(Brachyspira = ifelse(brachyod=="Brachyod", "Pos", 
+                              ifelse(brachypil== "Brachypil", "Pos", "Neg")))
+Clostr <- dt %>% 
+  filter(!is.na(Clperfr) | !is.na(Cldiff)) %>% View()
+  mutate(Clostridi = ifelse(Clperfr == "P", "Pos", 
+                            ifelse(Cldiff == "P", "Pos", "N")))
+
+##Modello di regressione rotavirus predittore di infezioni batteriche?-----
+
+library(brms)
+  
 
 ### Profili di coeinfezione----
 
@@ -74,7 +92,7 @@ dt %>% drop_na( profilo) %>%
 
 #Analisi delle corrispondenze multiple----
 
-dt <- dt[, c(9:13, 15, 17)]
+dt <- dt[, c(9:13, 15, 17, 41 )]
 #plot_bar(dt)
 
 dt <- dt %>% 
@@ -83,16 +101,16 @@ dt <- dt %>%
 cats <- apply(dt, 2, function(x) nlevels(as.factor(x)))
 
 
-res.mca <- MCA(dt, quali.sup = 1)
+res.mca <- MCA(dt, quali.sup = c(1,8), graph = FALSE)
 
-
+fviz_mca_ind(res.mca)
 
 
 fviz_screeplot(res.mca, addlabels = TRUE, ylim = c(0, 45))
 fviz_mca_biplot(res.mca, 
                # repel = TRUE, # Avoid text overlapping (slow if many point)
                 ggtheme = theme_minimal(), 
-                alpha.ind = 0.3, 
+                # alpha.ind = 0.3, 
                 geom.ind = "point")
 
 fviz_mca_var(res.mca, col.var = "cos2",
