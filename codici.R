@@ -57,7 +57,25 @@ Clostr <- dt %>%
 ##Modello di regressione rotavirus predittore di infezioni batteriche?-----
 
 library(brms)
+library(lme4)
+  # 
+  mod <- brm(formula = Brachyspira ~ RV+ (1|codaz),
+                            data=Brachy,
+                            family = bernoulli(link = "logit"),
+                            warmup = 500,
+                            iter = 2000,
+                            chains = 2,
+                            inits= "0",
+                            cores=2,
+                            seed = 123)
+
+Brachy <- Brachy %>% 
+  mutate(Brachyspira = factor(Brachyspira))
   
+mod <- glm(Brachyspira ~ RVA+ RVB+ RVC+RVH+PEDV+  ageclass, data = Brachy, family = binomial)
+
+mod <- glmer(as.factor(RVA)  ~  Brachyspira + RVB+ RVC+RVH+PEDV+ (1|codaz), data = Brachy, family = binomial)
+
 
 ### Profili di coeinfezione----
 
@@ -101,7 +119,7 @@ dt <- dt %>%
 cats <- apply(dt, 2, function(x) nlevels(as.factor(x)))
 
 
-res.mca <- MCA(dt, quali.sup = c(1,8), graph = FALSE)
+res.mca <- MCA(dt, quali.sup = c(8), graph = FALSE)
 
 fviz_mca_ind(res.mca)
 
