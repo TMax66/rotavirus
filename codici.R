@@ -50,13 +50,19 @@ Brachy <- dt %>%
   mutate(Brachyspira = ifelse(brachyod=="Brachyod", "Pos", 
                               ifelse(brachypil== "Brachypil", "Pos", "Neg")))
 Clostr <- dt %>% 
-  filter(!is.na(Clperfr) | !is.na(Cldiff)) %>% View()
+  filter(!is.na(Clperfr) | !is.na(Cldiff)) %>% 
   mutate(Clostridi = ifelse(Clperfr == "P", "Pos", 
                             ifelse(Cldiff == "P", "Pos", "N")))
+
+Lawsonia <- dt %>% 
+  filter(!is.na(Lawsonia)) %>% 
+  mutate(Lawsonia = ifelse(Lawsonia == "P", "POS", "NEG"))
 
 ##Modello di regressione rotavirus predittore di infezioni batteriche?-----
 
 library(brms)
+
+
   
 
 ### Profili di coeinfezione----
