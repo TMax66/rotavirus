@@ -40,42 +40,107 @@ dt <- dati %>%
     stagione = ifelse(quart==1, "Winter", 
                       ifelse(quart==2, "Spring", 
                              ifelse(quart==3, "Summer", "Autumn"))))
-
-dt %>% 
-  group_by(codaz, day, month, year) %>% 
-  count() %>% View()
+# 
+# dt %>% 
+#   group_by(codaz, day, month, year) %>% 
+#   count() %>% View()
  
 Brachy <- dt %>% 
   filter(!is.na(brachyod) | !is.na(brachypil)) %>% 
   mutate(Brachyspira = ifelse(brachyod=="Brachyod", "Pos", 
-                              ifelse(brachypil== "Brachypil", "Pos", "Neg")))
+                              ifelse(brachypil== "Brachypil", "Pos", "Neg"))) %>% 
+  select(Brachyspira, RVA,RVB, RVC, RVH, RV, ageclass, stagione, codaz)
+
+
 Clostr <- dt %>% 
-  filter(!is.na(Clperfr) | !is.na(Cldiff)) %>% View()
+  filter(!is.na(Clperfr) | !is.na(Cldiff)) %>% 
   mutate(Clostridi = ifelse(Clperfr == "P", "Pos", 
-                            ifelse(Cldiff == "P", "Pos", "N")))
+                            ifelse(Cldiff == "P", "Pos", "N"))) %>% 
+  select(Clostridi, RVA,RVB, RVC, RVH, RV, ageclass, stagione, codaz)
+
+Rota <- dt %>% 
+  select(RV,RVA,RVB, RVC, RVH, ageclass, stagione, codaz)
 
 ##Modello di regressione rotavirus predittore di infezioni batteriche?-----
 
 library(brms)
 library(lme4)
+library(bayestestR)
+library(see)
   # 
-  mod <- brm(formula = Brachyspira ~ RV+ (1|codaz),
-                            data=Brachy,
+
+mymodfun <- function(df, y){  
+
+ mod <- brm(formula = paste(y, "~",  "stagione", "+", "ageclass", "+","(1|codaz)"),
+                            data=df,
                             family = bernoulli(link = "logit"),
-                            warmup = 500,
-                            iter = 2000,
-                            chains = 2,
+                            warmup = 1000,
+                            iter = 4000,
+                            chains = 4,
                             inits= "0",
-                            cores=2,
+                            cores=8,
                             seed = 123)
+  plot(p_direction(mod))+scale_fill_brewer(palette="Blues")+
+    theme_ipsum_rc()
+}
 
-Brachy <- Brachy %>% 
-  mutate(Brachyspira = factor(Brachyspira))
+mymodfun2 <- function(df, y){  
   
-mod <- glm(Brachyspira ~ RVA+ RVB+ RVC+RVH+PEDV+  ageclass, data = Brachy, family = binomial)
+  mod <- brm(formula = paste(y, "~",  "stagione", "+", "ageclass", "+","(1|codaz)",
+                             "+","RVA","+","RVB","+","RVC", "+","RVH"),
+             data=df,
+             family = bernoulli(link = "logit"),
+             warmup = 1000,
+             iter = 4000,
+             chains = 4,
+             inits= "0",
+             cores=8,
+             seed = 123)
+  plot(p_direction(mod))+scale_fill_brewer(palette="Blues")+
+    theme_ipsum_rc()
+}
 
-mod <- glmer(as.factor(RVA)  ~  Brachyspira + RVB+ RVC+RVH+PEDV+ (1|codaz), data = Brachy, family = binomial)
 
+RV <- mymodfun(df=Rota, y = "RV")
+RVA <- mymodfun(df=Rota, y = "RVA")
+RVB <- mymodfun(df=Rota, y = "RVB")
+RVC <- mymodfun(df=Rota, y = "RVC")
+RVH <- mymodfun(df=Rota, y = "RVH")
+
+library(patchwork)
+
+RV/(RVA+RVB+RVC+RVH)
+
+
+modbrachy <- brm(formula = Brachyspira ~   stagione +(1|codaz)
+                           + RVA + RVB + RVC + RVH,
+           data=Brachy,
+           family = bernoulli(link = "logit"),
+           warmup = 1000,
+           iter = 4000,
+           chains = 4,
+           inits= "0",
+           cores=8,
+           seed = 123)
+
+
+
+modclst <- brm(formula = Clostridi ~   stagione +(1|codaz)
+                 + RVA + RVB + RVC + RVH + ageclass,
+                 data=Clostr,
+                 family = bernoulli(link = "logit"),
+                 warmup = 1000,
+                 iter = 4000,
+                 chains = 4,
+                 inits= "0",
+                 cores=8,
+                 seed = 123)
+
+plot(p_direction(modclst))+scale_fill_brewer(palette="Blues")+
+  theme_ipsum_rc()
+
+
+mymodfun2(df=Brachy, y = "Brachyspira")
 
 ### Profili di coeinfezione----
 
