@@ -61,9 +61,14 @@ Clostr <- dt %>%
 Rota <- dt %>% 
   select(RV,RVA,RVB, RVC, RVH, ageclass, stagione, codaz)
 
+Lawsonia <- dt %>% 
+  filter(!is.na(Lawsonia)) %>% 
+  mutate(Lawsonia = ifelse(Lawsonia == "P", "POS", "NEG"))
+
 ##Modello di regressione rotavirus predittore di infezioni batteriche?-----
 
 library(brms)
+<<<<<<< HEAD
 library(lme4)
 library(bayestestR)
 library(see)
@@ -85,6 +90,10 @@ mymodfun <- function(df, y){
 }
 
 mymodfun2 <- function(df, y){  
+=======
+
+
+>>>>>>> 1745c56cb0e89985ac7c12b8142b22dbfffc3900
   
   mod <- brm(formula = paste(y, "~",  "stagione", "+", "ageclass", "+","(1|codaz)",
                              "+","RVA","+","RVB","+","RVC", "+","RVH"),
