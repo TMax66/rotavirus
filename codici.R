@@ -61,6 +61,8 @@ Clostr <- dt %>%
 Rota <- dt %>% 
   select(RV,RVA,RVB, RVC, RVH, ageclass, stagione, codaz)
 
+Rota$RV <- as.numeric(as.factor(Rota$RV))-1
+
 Lawsonia <- dt %>% 
   filter(!is.na(Lawsonia)) %>% 
   mutate(Lawsonia = ifelse(Lawsonia == "P", "POS", "NEG"))
@@ -68,9 +70,9 @@ Lawsonia <- dt %>%
 ##Modello di regressione rotavirus predittore di infezioni batteriche?-----
 
 library(brms)
-<<<<<<< HEAD
 library(lme4)
 library(bayestestR)
+library(rstanarm)
 library(see)
   # 
 
@@ -89,12 +91,19 @@ mymodfun <- function(df, y){
     theme_ipsum_rc()
 }
 
+
+mod <-stan_glmer(formula = paste("RV", "~",  "stagione", "+", "ageclass", "+","(1|codaz)"),
+           data=Rota,
+           family = binomial(),
+           cores=8,
+           seed = 123)
+plot(p_direction(mod))+scale_fill_brewer(palette="Blues")+
+  theme_ipsum_rc()
+ 
+
+
+
 mymodfun2 <- function(df, y){  
-=======
-
-
->>>>>>> 1745c56cb0e89985ac7c12b8142b22dbfffc3900
-  
   mod <- brm(formula = paste(y, "~",  "stagione", "+", "ageclass", "+","(1|codaz)",
                              "+","RVA","+","RVB","+","RVC", "+","RVH"),
              data=df,
