@@ -38,8 +38,10 @@ dt <- dati %>%
 Brachy <- dt %>% 
   filter(!is.na(brachyod) | !is.na(brachypil)) %>% 
   mutate(Brachyspira = ifelse(brachyod=="Brachyod", "Pos", 
-                              ifelse(brachypil== "Brachypil", "Pos", "Neg"))) %>% 
+                              ifelse(brachypil== "Brachypil", "Pos", "Neg"))) %>% View()
   select(Brachyspira, RVA,RVB, RVC, RVH, RV, ageclass, stagione, codaz)
+
+Brachy$Brachyspira <- as.numeric(as.factor(Brachy$Brachyspira))-1
 
 
 Clostr <- dt %>% 
@@ -47,6 +49,8 @@ Clostr <- dt %>%
   mutate(Clostridi = ifelse(Clperfr == "P", "Pos", 
                             ifelse(Cldiff == "P", "Pos", "N"))) %>% 
   select(Clostridi, RVA,RVB, RVC, RVH, RV, ageclass, stagione, codaz)
+Clostr$Clostridi <- as.numeric(as.factor(Clostr$Clostridi))-1
+
 
 Rota <- dt %>% 
   select(RV,RVA,RVB, RVC, RVH, ageclass, stagione, codaz)
@@ -59,4 +63,6 @@ Rota$RVH <- as.numeric(as.factor(Rota$RVH))-1
 
 Lawsonia <- dt %>% 
   filter(!is.na(Lawsonia)) %>% 
-  mutate(Lawsonia = ifelse(Lawsonia == "P", "POS", "NEG"))
+  mutate(Lawsonia = ifelse(Lawsonia == "P", "POS", "NEG")) %>% 
+  select(Lawsonia, RVA,RVB, RVC, RVH, RV, ageclass, stagione, codaz)
+Lawsonia$Lawsonia <- as.numeric(as.factor(Lawsonia$Lawsonia))-1
