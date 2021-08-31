@@ -1,164 +1,197 @@
-# library("tidyverse")
-# library("readxl")
-# library("here")
-# library("lubridate")
-# library("zoo")
-# library("hrbrthemes")
-
 source("librerie.R")
+source("preparazione dati.R")
 
 
-dati <- read_excel("data/Dati epidemiogici RV_2016-2019-070621.xlsx")
+##Modelli di regressione rotavirus-----
 
-## data handling----
+RV <- stan_glmer(RV~stagione+ageclass+(1|codaz), 
+           data = Rota, 
+           family = binomial(link = logit), 
+           # prior = student_t(df=7, location = 0, scale = 2.5), 
+           # prior_intercept = student_t(df=7, location = 0, scale = 2.5), 
+           cores = 8, seed = 1966)
+RVloo <- loo(RV)
 
-dt <- dati %>% 
-  mutate( nconf = str_remove_all(nconf, " "),
-          #nconf = str_c(year, nconf), 
-    codaz = str_to_upper(codaz), 
-         codaz = gsub("[[:punct:][:blank:]]","", codaz), 
-         ageclass = str_remove(ageclass, "Suino"),
-         ageclass = str_remove(ageclass, "suino"),
-         prelievo = str_c(day, "-", month, "-", year), 
-         dtprelievo = dmy(prelievo), 
-         Year = year(dtprelievo), 
-         Month = month(dtprelievo), 
-         Week = week(dtprelievo), 
-         rva = ifelse(RVA == "P", "RVA", 0),
-         rvb = ifelse(RVB == "P", "RVB", 0), 
-         rvc = ifelse(RVC == "P", "RVC", 0), 
-         rvh = ifelse(RVH == "P", "RVH", 0),
-         rv = ifelse(RV == "P", "RV", 0), 
-         pedv = ifelse(PEDV == "P", "PEDV", 0),
-         coli = ifelse(ecoli == "P", "EColi", 0), 
-         lawsonia = ifelse(Lawsonia == "P", "Lawsonia", 0), 
-         brachyod = ifelse(Brachyspira_hyod == "P", "Brachyod", 0),
-         brachypil = ifelse(Brachyspira_pilos == "P", "Brachypil", 0), 
-         clperfr = ifelse(Clperfr == "P", "Clperf", 0),
-         cldiff = ifelse(Cldiff == "P", "Cldiff", 0), 
-         quart = quarter(dtprelievo,fiscal_start = 11), 
-    stagione = ifelse(quart==1, "Winter", 
-                      ifelse(quart==2, "Spring", 
-                             ifelse(quart==3, "Summer", "Autumn"))))
-# 
-# dt %>% 
-#   group_by(codaz, day, month, year) %>% 
-#   count() %>% View()
- 
-Brachy <- dt %>% 
-  filter(!is.na(brachyod) | !is.na(brachypil)) %>% 
-  mutate(Brachyspira = ifelse(brachyod=="Brachyod", "Pos", 
-                              ifelse(brachypil== "Brachypil", "Pos", "Neg"))) %>% 
-  select(Brachyspira, RVA,RVB, RVC, RVH, RV, ageclass, stagione, codaz)
+RVint <- stan_glmer(RV~stagione*ageclass+(1|codaz), 
+                 data = Rota, 
+                 family = binomial(link = logit), 
+                 # prior = student_t(df=7, location = 0, scale = 2.5), 
+                 # prior_intercept = student_t(df=7, location = 0, scale = 2.5), 
+                 cores = 8, seed = 1966)
 
+RVintloo <- loo(RVint)
 
-Clostr <- dt %>% 
-  filter(!is.na(Clperfr) | !is.na(Cldiff)) %>% 
-  mutate(Clostridi = ifelse(Clperfr == "P", "Pos", 
-                            ifelse(Cldiff == "P", "Pos", "N"))) %>% 
-  select(Clostridi, RVA,RVB, RVC, RVH, RV, ageclass, stagione, codaz)
+library(sjPlot)
 
-Rota <- dt %>% 
-  select(RV,RVA,RVB, RVC, RVH, ageclass, stagione, codaz)
+ plot_model(RV, type = "est", transform = NULL,show.values = TRUE, value.offset = .3) +
+   theme_ipsum_rc()
 
-Rota$RV <- as.numeric(as.factor(Rota$RV))-1
-
-Lawsonia <- dt %>% 
-  filter(!is.na(Lawsonia)) %>% 
-  mutate(Lawsonia = ifelse(Lawsonia == "P", "POS", "NEG"))
-
-##Modello di regressione rotavirus predittore di infezioni batteriche?-----
-
-library(brms)
-library(lme4)
-library(bayestestR)
-library(rstanarm)
-library(see)
-  # 
-
-mymodfun <- function(df, y){  
-
- mod <- brm(formula = paste(y, "~",  "stagione", "+", "ageclass", "+","(1|codaz)"),
-                            data=df,
-                            family = bernoulli(link = "logit"),
-                            warmup = 1000,
-                            iter = 4000,
-                            chains = 4,
-                            inits= "0",
-                            cores=8,
-                            seed = 123)
-  plot(p_direction(mod))+scale_fill_brewer(palette="Blues")+
-    theme_ipsum_rc()
-}
-
-
-mod <-stan_glmer(formula = paste("RV", "~",  "stagione", "+", "ageclass", "+","(1|codaz)"),
-           data=Rota,
-           family = binomial(),
-           cores=8,
-           seed = 123)
-plot(p_direction(mod))+scale_fill_brewer(palette="Blues")+
+RVA<- stan_glmer(RVA~stagione+ageclass+(1|codaz), 
+                 data = Rota, 
+                 family = binomial(link = logit), 
+                 prior = student_t(df=7, location = 0, scale = 2.5), 
+                 prior_intercept = student_t(df=7, location = 0, scale = 2.5), 
+                 cores = 8, seed = 1966)
+plot_model(RVA, type = "est",show.values = TRUE,transform = NULL, value.offset = .3,show.intercept = T) +
   theme_ipsum_rc()
- 
+
+RVB <- stan_glmer(RVB~stagione+ageclass+(1|codaz), 
+                 data = Rota, 
+                 family = binomial(link = logit), 
+                 prior = student_t(df=7, location = 0, scale = 2.5), 
+                 prior_intercept = student_t(df=7, location = 0, scale = 2.5), 
+                 cores = 8, seed = 1966)
+plot_model(RVB, type = "est",show.values = TRUE, value.offset = .3) +
+  theme_ipsum_rc()
+
+RVC <- stan_glmer(RVC~stagione+ageclass+(1|codaz), 
+                 data = Rota, 
+                 family = binomial(link = logit), 
+                 prior = student_t(df=7, location = 0, scale = 2.5), 
+                 prior_intercept = student_t(df=7, location = 0, scale = 2.5), 
+                 cores = 8, seed = 1966)
+plot_model(RVC, type = "est",show.values = TRUE, value.offset = .3) +
+  theme_ipsum_rc()
 
 
+RVH <- stan_glmer(RVH~stagione+ageclass+(1|codaz), 
+                 data = Rota, 
+                 family = binomial(link = logit), 
+                 prior = student_t(df=7, location = 0, scale = 2.5), 
+                 prior_intercept = student_t(df=7, location = 0, scale = 2.5), 
+                 cores = 8, seed = 1966)
 
-mymodfun2 <- function(df, y){  
-  mod <- brm(formula = paste(y, "~",  "stagione", "+", "ageclass", "+","(1|codaz)",
-                             "+","RVA","+","RVB","+","RVC", "+","RVH"),
-             data=df,
-             family = bernoulli(link = "logit"),
-             warmup = 1000,
-             iter = 4000,
-             chains = 4,
-             inits= "0",
-             cores=8,
-             seed = 123)
-  plot(p_direction(mod))+scale_fill_brewer(palette="Blues")+
-    theme_ipsum_rc()
-}
+plot_model(RVH, type = "est",show.values = TRUE, value.offset = .3) +
+  theme_ipsum_rc()
 
-
-RV <- mymodfun(df=Rota, y = "RV")
-RVA <- mymodfun(df=Rota, y = "RVA")
-RVB <- mymodfun(df=Rota, y = "RVB")
-RVC <- mymodfun(df=Rota, y = "RVC")
-RVH <- mymodfun(df=Rota, y = "RVH")
-
-library(patchwork)
-
-RV/(RVA+RVB+RVC+RVH)
-
-
-modbrachy <- brm(formula = Brachyspira ~   stagione +(1|codaz)
-                           + RVA + RVB + RVC + RVH,
-           data=Brachy,
-           family = bernoulli(link = "logit"),
-           warmup = 1000,
-           iter = 4000,
-           chains = 4,
-           inits= "0",
-           cores=8,
-           seed = 123)
-
-
-
-modclst <- brm(formula = Clostridi ~   stagione +(1|codaz)
-                 + RVA + RVB + RVC + RVH + ageclass,
-                 data=Clostr,
-                 family = bernoulli(link = "logit"),
-                 warmup = 1000,
-                 iter = 4000,
-                 chains = 4,
-                 inits= "0",
+##Modelli di regressione predizione infezioni batteriche----
+modbrachy <- stan_glmer(formula = Brachyspira ~   stagione +(1|codaz)
+                 + RVA + RVB + RVC + RVH,
+                 data=Brachy,
+                 family = binomial(link = logit), 
                  cores=8,
-                 seed = 123)
+                 seed = 1966)
 
-plot(p_direction(modclst))+scale_fill_brewer(palette="Blues")+
+
+
+plot_model(modbrachy, type = "est",show.values = TRUE, value.offset = .3) +
+  theme_ipsum_rc()
+
+plot(p_direction(modbrachy))+scale_fill_brewer(palette="Blues")+
   theme_ipsum_rc()
 
 
-mymodfun2(df=Brachy, y = "Brachyspira")
+# modbrachy <- brm(formula = Brachyspira ~   stagione +(1|codaz)
+#                            + RVA + RVB + RVC + RVH,
+#            data=Brachy,
+#            family = bernoulli(link = "logit"),
+#            warmup = 1000,
+#            iter = 4000,
+#            chains = 4,
+#            inits= "0",
+#            cores=8,
+#            seed = 123)
+
+
+
+# modclst <- brm(formula = Clostridi ~   stagione +(1|codaz)
+#                  + RVA + RVB + RVC + RVH + ageclass,
+#                  data=Clostr,
+#                  family = bernoulli(link = "logit"),
+#                  warmup = 1000,
+#                  iter = 4000,
+#                  chains = 4,
+#                  inits= "0",
+#                  cores=8,
+#                  seed = 123)
+
+modclost <- stan_glmer(formula = Clostridi ~   stagione +(1|codaz)
+                        + RVA + RVB + RVC + RVH,
+                        data=Clostr,
+                        family = binomial(link = logit), 
+                        cores=8,
+                        seed = 1966)
+
+plot(p_direction(modclost))+scale_fill_brewer(palette="Blues")+
+  theme_ipsum_rc()
+
+
+modlaws <- stan_glmer(formula = Lawsonia ~   stagione +(1|codaz)
+                       + RVA + RVB + RVC + RVH,
+                       data=Lawsonia,
+                       family = binomial(link = logit), 
+                       cores=8,
+                       seed = 1966)
+
+plot(p_direction(modlaws))+scale_fill_brewer(palette="Blues")+
+  theme_ipsum_rc()
+
+
+
+
+
+
+
+
+# mymodfun <- function(df, y){  
+#   
+#   mod <-stan_glmer(formula = paste(y, "~",  "stagione", "+", "ageclass", "+","(1|codaz)"),
+#                    data=df,
+#                    family = binomial(),
+#                    cores=8,
+#                    seed = 123)
+#   plot(p_direction(mod))+scale_fill_brewer(palette="Blues")+
+#     theme_ipsum_rc()
+# }
+
+# RV <- mymodfun(df=Rota, y = "RV")
+# RVA <- mymodfun(df=Rota, y = "RVA")
+# RVB <- mymodfun(df=Rota, y = "RVB")
+# RVC <- mymodfun(df=Rota, y = "RVC")
+# RVH <- mymodfun(df=Rota, y = "RVH")
+
+# mymodfun <- function(df, y){
+#   
+#   mod <- brm(formula = paste(y, "~",  "stagione", "+", "ageclass", "+","(1|codaz)"),
+#              data=df,
+#              family = bernoulli(link = "logit"),
+#              warmup = 1000,
+#              iter = 4000,
+#              chains = 4,
+#              inits= "0",
+#              cores=8,
+#              seed = 123)
+#   plot(p_direction(mod))+scale_fill_brewer(palette="Blues")+
+#     theme_ipsum_rc()
+# }
+# 
+
+
+
+
+# 
+# mymodfun2 <- function(df, y){  
+#   mod <- brm(formula = paste(y, "~",  "stagione", "+", "ageclass", "+","(1|codaz)",
+#                              "+","RVA","+","RVB","+","RVC", "+","RVH"),
+#              data=df,
+#              family = bernoulli(link = "logit"),
+#              warmup = 1000,
+#              iter = 4000,
+#              chains = 4,
+#              inits= "0",
+#              cores=8,
+#              seed = 123)
+#   plot(p_direction(mod))+scale_fill_brewer(palette="Blues")+
+#     theme_ipsum_rc()
+# }
+# 
+# 
+# RV <- mymodfun(df=Rota, y = "RV")
+# RVA <- mymodfun(df=Rota, y = "RVA")
+# RVB <- mymodfun(df=Rota, y = "RVB")
+# RVC <- mymodfun(df=Rota, y = "RVC")
+# RVH <- mymodfun(df=Rota, y = "RVH")
+
 
 ### Profili di coeinfezione----
 
