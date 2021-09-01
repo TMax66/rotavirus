@@ -4,7 +4,7 @@ source("preparazione dati.R")
 
 ##Modelli di regressione rotavirus-----
 
-RV <- stan_glmer(RV~stagione+ageclass+(1|codaz), 
+RV <- stan_glmer(RV~0+as.factor(stagione)+as.factor(ageclass)+(1|codaz), 
            data = Rota, 
            family = binomial(link = logit), 
            # prior = student_t(df=7, location = 0, scale = 2.5), 
@@ -23,7 +23,7 @@ RVintloo <- loo(RVint)
 
 library(sjPlot)
 
- plot_model(RV, type = "est", transform = NULL,show.values = TRUE, value.offset = .3) +
+ plot_model(RV, type = "est", show.values = TRUE, value.offset = .3) +
    theme_ipsum_rc()
 
 RVA<- stan_glmer(RVA~stagione+ageclass+(1|codaz), 

@@ -38,7 +38,7 @@ dt <- dati %>%
 Brachy <- dt %>% 
   filter(!is.na(brachyod) | !is.na(brachypil)) %>% 
   mutate(Brachyspira = ifelse(brachyod=="Brachyod", "Pos", 
-                              ifelse(brachypil== "Brachypil", "Pos", "Neg"))) %>% View()
+                              ifelse(brachypil== "Brachypil", "Pos", "Neg"))) %>%  
   select(Brachyspira, RVA,RVB, RVC, RVH, RV, ageclass, stagione, codaz)
 
 Brachy$Brachyspira <- as.numeric(as.factor(Brachy$Brachyspira))-1
