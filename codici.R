@@ -81,16 +81,16 @@ plot(p_direction(modbrachy))+scale_fill_brewer(palette="Blues")+
   theme_ipsum_rc()
 
 
-# modbrachy <- brm(formula = Brachyspira ~   stagione +(1|codaz)
-#                            + RVA + RVB + RVC + RVH,
-#            data=Brachy,
-#            family = bernoulli(link = "logit"),
-#            warmup = 1000,
-#            iter = 4000,
-#            chains = 4,
-#            inits= "0",
-#            cores=8,
-#            seed = 123)
+modbrachy <- brm(formula = Brachyspira ~  0+ stagione +(1|codaz)
+                           + RVA + RVB + RVC + RVH,
+           data=Brachy,
+           family = bernoulli(link = "logit"),
+           warmup = 1000,
+           iter = 4000,
+           chains = 4,
+           inits= "0",
+           cores=8,
+           seed = 123)
 
 
 
