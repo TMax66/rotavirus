@@ -9,6 +9,7 @@ dt <- dati %>%
           codaz = gsub("[[:punct:][:blank:]]","", codaz), 
           ageclass = str_remove(ageclass, "Suino"),
           ageclass = str_remove(ageclass, "suino"),
+          ageclass = str_remove(ageclass, " "),
           prelievo = str_c(day, "-", month, "-", year), 
           dtprelievo = dmy(prelievo), 
           Year = year(dtprelievo), 
