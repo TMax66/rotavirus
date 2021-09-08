@@ -2,6 +2,95 @@ source("librerie.R")
 source("preparazione dati.R")
 
 
+
+##Modelli di poisson-----
+
+
+
+dtYM <- expand_grid(codaz = levels(factor(dt$codaz)),
+  year = c("2016", "2017",  "2018",  "2019"), 
+                    month = c( "01", "02",  "03",  "04",  "05",  "06",  "07", "08", "09", "10",  "11",  "12" ), 
+ageclass = levels(factor(dt$ageclass)), 
+ 
+)
+ 
+DT <- dt %>% 
+  group_by(codaz, year, month, ageclass,  RV) %>% count() %>% 
+  pivot_wider(names_from = "RV", values_from ="n", values_fill = 0 ) %>% 
+  mutate(Conferiti = P+N) %>% 
+     right_join(dtYM, 
+              by = c("codaz", "year", "month", "ageclass"))    
+   
+  
+DT[is.na(DT)] <- 0
+
+DT <- DT %>% 
+  mutate(quarter = recode(month, 
+                         "01" = "Q1", 
+                         "02" = "Q1",
+                         "03" = "Q1",
+                         "04" = "Q2",
+                         "05" = "Q2",
+                         "06" = "Q2",
+                         "07" = "Q3",
+                         "08" = "Q3",
+                         "09" = "Q3", 
+                         "10" = "Q4",
+                         "11" = "Q4",
+                         "12" = "Q4"), 
+         prov = substr(codaz, 4,5))
+DT <- DT %>% 
+  filter(prov!= "FE")
+#Poisson Regression
+
+
+fit <- glm(P ~ ageclass+ quarter + prov , family="poisson", data=DT, offset = Conferiti)
+
+plot_model(fit, transform = NULL)
+
+fitPr <- glm(P ~ 0+ prov , family="poisson", data=DT, offset = Conferiti)
+
+
+glm(P ~ 1  , family="poisson", data=DT, offset = Conferiti)
+
+#maps
+
+library(tmap)
+library(GADMTools)
+library(tmaptools)
+
+ITA <- GADMTools::gadm_sf_loadCountries("ITA", level=0,basefile = "data/")$sf
+REG <- GADMTools::gadm_sf_loadCountries("ITA", level=1,basefile = "data/")$sf
+province   <-GADMTools::gadm_sf_loadCountries("ITA", level=2,basefile = "data/")$sf
+ 
+pr <- c("Ascoli Piceno", "Bergamo",  "Biella",  "Belluno",  "Bologna",  "Brescia",  "Cuneo", 
+        "Cremona",  "Cosenza",  "Enna",  "Lodi",  "Macerata", "Milano", "Mantova",  "Modena",  
+        "Novara", "Piacenza",  "Padova",  "Pordenone",  "Parma",  "Pavia",  "Potenza", 
+        "Reggio Calabria", "Rovigo", "Torino",  "Treviso",  "Vercelli",  "Viterbo",  "Verona")
+
+mapPr<- province %>%  
+  filter(NAME_2 %in%pr)
+tm_shape(ITA)+tm_fill()+tm_borders("gray")+
+  tm_shape(REG)+tm_fill()+tm_borders("black")+
+  tm_shape(mapPr, id= "Name_2")+tm_fill("lightblue")+tm_borders("black")
+
+
+DT %>% 
+  group_by(prov) %>% 
+  summarise(pos = sum(P), 
+            conf = sum(Conferiti), 
+            I = pos/conf)
+
+
+DTx <- DT %>% 
+  group_by(prov, ageclass, year, quarter) %>% 
+  summarise(P = sum(P), 
+            N = sum(N), 
+            Conferiti = sum(Conferiti))
+
+glm(P ~ 1  , family="poisson", data=DTx, offset = Conferiti)
+
+
 ##Modelli di regressione rotavirus-----
 
 RV <- stan_glmer(RV~0+as.factor(stagione)+as.factor(ageclass)+(1|codaz), 
