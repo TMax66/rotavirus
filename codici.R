@@ -51,7 +51,7 @@ plot_model(fit, transform = NULL)
 fitPr <- glm(P ~ 0+ prov , family="poisson", data=DT, offset = Conferiti)
 
 
-glm(P ~ 1  , family="poisson", data=DT, offset = Conferiti)
+glm(P ~ 1  , family="poisson", data=subset(DT, DT$Conferiti>0), offset(log(Conferiti)))
 
 #maps
 
