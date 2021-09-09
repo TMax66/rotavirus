@@ -36,13 +36,13 @@ dt <- dati %>%
 #   group_by(codaz, day, month, year) %>% 
 #   count() %>% View()
 
-Brachy <- dt %>% 
+Brachybinom <- dt %>% 
   filter(!is.na(brachyod) | !is.na(brachypil)) %>% 
   mutate(Brachyspira = ifelse(brachyod=="Brachyod", "Pos", 
                               ifelse(brachypil== "Brachypil", "Pos", "Neg"))) %>%  
   select(Brachyspira, RVA,RVB, RVC, RVH, RV, ageclass, stagione, codaz)
 
-Brachy$Brachyspira <- as.numeric(as.factor(Brachy$Brachyspira))-1
+Brachybinom$Brachyspira <- as.numeric(as.factor(Brachybinom$Brachyspira))-1
 
 
 Clostr <- dt %>% 
@@ -50,7 +50,7 @@ Clostr <- dt %>%
   mutate(Clostridi = ifelse(Clperfr == "P", "Pos", 
                             ifelse(Cldiff == "P", "Pos", "N"))) %>% 
   select(Clostridi, RVA,RVB, RVC, RVH, RV, ageclass, stagione, codaz)
-Clostr$Clostridi <- as.numeric(as.factor(Clostr$Clostridi))-1
+ Clostr$Clostridi <- as.numeric(as.factor(Clostr$Clostridi))-1
 
 
 Rota <- dt %>% 
@@ -63,7 +63,7 @@ Rota$RVC <- as.numeric(as.factor(Rota$RVC))-1
 Rota$RVH <- as.numeric(as.factor(Rota$RVH))-1
 
 Lawsonia <- dt %>% 
-  filter(!is.na(Lawsonia)) %>% 
+  filter(!is.na(Lawsonia) & ageclass != "sottoscrofa") %>% 
   mutate(Lawsonia = ifelse(Lawsonia == "P", "POS", "NEG")) %>% 
   select(Lawsonia, RVA,RVB, RVC, RVH, RV, ageclass, stagione, codaz)
 Lawsonia$Lawsonia <- as.numeric(as.factor(Lawsonia$Lawsonia))-1
