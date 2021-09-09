@@ -92,6 +92,42 @@ rate <- rate %>%
 
 
 
+library(tmap)
+library(GADMTools)
+library(tmaptools)
+
+ITA <- GADMTools::gadm_sf_loadCountries("ITA", level=0,basefile = "data/")$sf
+REG <- GADMTools::gadm_sf_loadCountries("ITA", level=1,basefile = "data/")$sf
+province   <-GADMTools::gadm_sf_loadCountries("ITA", level=2,basefile = "data/")$sf
+
+pr <- c("Ascoli Piceno", "Bergamo",  "Biella",  "Belluno",  "Bologna",  "Brescia",  "Cuneo", 
+        "Cremona",  "Cosenza",  "Enna",  "Lodi",  "Macerata", "Milano", "Mantova",  "Modena",  
+        "Novara", "Piacenza",  "Padova",  "Pordenone",  "Parma",  "Pavia",  "Potenza", 
+        "Reggio Calabria", "Rovigo", "Torino",  "Treviso",  "Vercelli",  "Viterbo",  "Verona")
+
+mapPr<- province %>%  
+  filter(NAME_2 %in%pr) %>% 
+  left_join(rate, by = c("NAME_2" = "prov"))
+
+
+RV <- tm_shape(ITA)+tm_fill("white")+tm_borders("gray")+
+  tm_shape(REG)+tm_fill("white")+tm_borders("black")+
+  tm_shape(mapPr, id= "Name_2")+tm_fill("rate", palette = "Blues" )+tm_borders("black")+
+  tm_layout(main.title = "Rotavirus positive rate of pigs enteric cases ",
+            legend.title.size = 0.8,
+            legend.text.size = 0.6,
+            legend.position = c("right","top"),
+            legend.bg.color = "white",
+            legend.bg.alpha = 1)+
+  tm_scale_bar(breaks = c(0, 50, 100), text.size = .5,position = "left")+
+  tm_compass(type = "8star", position = c("right", "bottom")) 
+  
+  
+  
+
+
+
+
 
 
 
@@ -108,10 +144,12 @@ plot_model(fit2,   show.values = TRUE, value.offset = .3) +
   theme_ipsum_rc()
 
 
+tab_model(fit2)
 
 plot(p_direction(fit2))+scale_fill_brewer(palette="Blues")+
   theme_ipsum_rc()
   
+
 
 ###RVA----
 
@@ -194,7 +232,23 @@ rate <- rate %>%
   rate = exp(.)) 
 
 
+mapPr<- province %>%  
+  filter(NAME_2 %in%pr) %>% 
+  left_join(rate, by = c("NAME_2" = "prov"))
 
+
+RVA <- tm_shape(ITA)+tm_fill("white")+tm_borders("gray")+
+  tm_shape(REG)+tm_fill("white")+tm_borders("black")+
+  tm_shape(mapPr, id= "Name_2")+tm_fill("rate", palette = "Blues" )+tm_borders("black")+
+  tm_layout(main.title = "Rotavirus A positive rate of pigs enteric cases ",
+            legend.title.size = 0.8,
+            legend.text.size = 0.6,
+            legend.position = c("right","top"),
+            legend.bg.color = "white",
+            legend.bg.alpha = 1)+
+  tm_scale_bar(breaks = c(0, 50, 100), text.size = .5,position = "left")+
+  tm_compass(type = "8star", position = c("right", "bottom")) 
+  
 
 
 
@@ -202,10 +256,269 @@ rate <- rate %>%
 
 
 ###RVB---
+RVB <- dt %>% 
+  group_by(codaz, year, month, ageclass,  RVB) %>% count() %>%  
+  pivot_wider(names_from = "RVB", values_from ="n", values_fill = 0 ) %>% 
+  mutate(Conferiti = P+N, 
+         YPeriod = recode(month, 
+                          "01" = "Winter", 
+                          "02" = "Winter",
+                          "03" = "Spring",
+                          "04" = "Spring",
+                          "05" = "Spring",
+                          "06" = "Summer",
+                          "07" = "Summer",
+                          "08" = "Summer",
+                          "09" = "Autumn", 
+                          "10" = "Autumn",
+                          "11" = "Autumn",
+                          "12" = "Autumn"), 
+         prov = substr(codaz, 4,5)) %>% 
+  select(-N)
+
+RVB <- RVB %>% 
+  filter(prov!= "FE")
+  
+RVBmp <- stan_glmer(P ~ 0+prov+(1|codaz)+offset(log(Conferiti)), 
+                    family="poisson", data = RVB, seed = 123, control = list(adapt_delta = 0.99),
+                    cores = 8)
+
+rate <- RVBmp$coefficients %>% as.data.frame()  
+
+rate <-  rownames_to_column(rate, "prov")
+rate <- rate[1:29,]
+
+rate <- rate %>% 
+  mutate(prov= recode(prov, 
+                      "provAP" = "Ascoli Piceno", 
+                      "provBG" = "Bergamo", 
+                      "provBI" ="Biella",
+                      "provBL" = "Belluno",
+                      "provBO" ="Bologna",
+                      "provBS" ="Brescia",
+                      "provCN" = "Cuneo",
+                      "provCR" = "Cremona",
+                      "provCS" ="Cosenza",
+                      "provEN" = "Enna", 
+                      "provLO" =  "Lodi",
+                      "provMC" = "Macerata",
+                      "provMI" =  "Milano",
+                      "provMN" =    "Mantova",
+                      "provMO" = "Modena",
+                      "provNO" =  "Novara",
+                      "provPC" = "Piacenza",
+                      "provPD" = "Padova",
+                      "provPN" =  "Pordenone",
+                      "provPR" ="Parma",
+                      "provPV" ="Pavia", 
+                      "provPZ" ="Potenza",
+                      "provRC" = "Reggio Calabria",
+                      "provRO" ="Rovigo",
+                      "provTO" =  "Torino",
+                      "provTV" = "Treviso", 
+                      "provVC" ="Vercelli",
+                      "provVI" ="Viterbo",
+                      "provVR" ="Verona"  
+  ), 
+  rate = exp(.)) 
+
+
+mapPr<- province %>%  
+  filter(NAME_2 %in%pr) %>% 
+  left_join(rate, by = c("NAME_2" = "prov"))
+
+
+RVB <- tm_shape(ITA)+tm_fill("white")+tm_borders("gray")+
+  tm_shape(REG)+tm_fill("white")+tm_borders("black")+
+  tm_shape(mapPr, id= "Name_2")+tm_fill("rate", palette = "Blues" )+tm_borders("black")+
+  tm_layout(main.title = "Rotavirus B positive rate of pigs enteric cases ",
+            legend.title.size = 0.8,
+            legend.text.size = 0.6,
+            legend.position = c("right","top"),
+            legend.bg.color = "white",
+            legend.bg.alpha = 1)+
+  tm_scale_bar(breaks = c(0, 50, 100), text.size = .5,position = "left")+
+  tm_compass(type = "8star", position = c("right", "bottom")) 
+
+
 
 ###RVC---
+RVC <- dt %>% 
+  group_by(codaz, year, month, ageclass,  RVC) %>% count() %>%  
+  pivot_wider(names_from = "RVC", values_from ="n", values_fill = 0 ) %>% 
+  mutate(Conferiti = P+N, 
+         YPeriod = recode(month, 
+                          "01" = "Winter", 
+                          "02" = "Winter",
+                          "03" = "Spring",
+                          "04" = "Spring",
+                          "05" = "Spring",
+                          "06" = "Summer",
+                          "07" = "Summer",
+                          "08" = "Summer",
+                          "09" = "Autumn", 
+                          "10" = "Autumn",
+                          "11" = "Autumn",
+                          "12" = "Autumn"), 
+         prov = substr(codaz, 4,5)) %>% 
+  select(-N)
+
+RVC <- RVC %>% 
+  filter(prov!= "FE")
+
+RVCmp <- stan_glmer(P ~ 0+prov+(1|codaz)+offset(log(Conferiti)), 
+                    family="poisson", data = RVC, seed = 123, control = list(adapt_delta = 0.99),
+                    cores = 8)
+
+
+rate <- RVCmp$coefficients %>% as.data.frame()  
+
+rate <-  rownames_to_column(rate, "prov")
+rate <- rate[1:29,]
+
+rate <- rate %>% 
+  mutate(prov= recode(prov, 
+                      "provAP" = "Ascoli Piceno", 
+                      "provBG" = "Bergamo", 
+                      "provBI" ="Biella",
+                      "provBL" = "Belluno",
+                      "provBO" ="Bologna",
+                      "provBS" ="Brescia",
+                      "provCN" = "Cuneo",
+                      "provCR" = "Cremona",
+                      "provCS" ="Cosenza",
+                      "provEN" = "Enna", 
+                      "provLO" =  "Lodi",
+                      "provMC" = "Macerata",
+                      "provMI" =  "Milano",
+                      "provMN" =    "Mantova",
+                      "provMO" = "Modena",
+                      "provNO" =  "Novara",
+                      "provPC" = "Piacenza",
+                      "provPD" = "Padova",
+                      "provPN" =  "Pordenone",
+                      "provPR" ="Parma",
+                      "provPV" ="Pavia", 
+                      "provPZ" ="Potenza",
+                      "provRC" = "Reggio Calabria",
+                      "provRO" ="Rovigo",
+                      "provTO" =  "Torino",
+                      "provTV" = "Treviso", 
+                      "provVC" ="Vercelli",
+                      "provVI" ="Viterbo",
+                      "provVR" ="Verona"  
+  ), 
+  rate = exp(.)) 
+
+
+mapPr<- province %>%  
+  filter(NAME_2 %in%pr) %>% 
+  left_join(rate, by = c("NAME_2" = "prov"))
+
+
+RVC <- tm_shape(ITA)+tm_fill("white")+tm_borders("gray")+
+  tm_shape(REG)+tm_fill("white")+tm_borders("black")+
+  tm_shape(mapPr, id= "Name_2")+tm_fill("rate", palette = "Blues" )+tm_borders("black")+
+  tm_layout(main.title = "Rotavirus C  positive rate of pigs enteric cases ",
+            legend.title.size = 0.8,
+            legend.text.size = 0.6,
+            legend.position = c("right","top"),
+            legend.bg.color = "white",
+            legend.bg.alpha = 1)+
+  tm_scale_bar(breaks = c(0, 50, 100), text.size = .5,position = "left")+
+  tm_compass(type = "8star", position = c("right", "bottom")) 
+
+
+
 
 ###RVH---
+RVH <- dt %>% 
+  group_by(codaz, year, month, ageclass,  RVH) %>% count() %>%  
+  pivot_wider(names_from = "RVH", values_from ="n", values_fill = 0 ) %>% 
+  mutate(Conferiti = P+N, 
+         YPeriod = recode(month, 
+                          "01" = "Winter", 
+                          "02" = "Winter",
+                          "03" = "Spring",
+                          "04" = "Spring",
+                          "05" = "Spring",
+                          "06" = "Summer",
+                          "07" = "Summer",
+                          "08" = "Summer",
+                          "09" = "Autumn", 
+                          "10" = "Autumn",
+                          "11" = "Autumn",
+                          "12" = "Autumn"), 
+         prov = substr(codaz, 4,5)) %>% 
+  select(-N)
+
+RVH <- RVH %>% 
+  filter(prov!= "FE")
+
+RVHmp <- stan_glmer(P ~ 0+prov+(1|codaz)+offset(log(Conferiti)), 
+                    family="poisson", data = RVH, seed = 123, control = list(adapt_delta = 0.99),
+                    cores = 8)
+
+rate <- RVHmp$coefficients %>% as.data.frame()  
+
+rate <-  rownames_to_column(rate, "prov")
+rate <- rate[1:29,]
+
+rate <- rate %>% 
+  mutate(prov= recode(prov, 
+                      "provAP" = "Ascoli Piceno", 
+                      "provBG" = "Bergamo", 
+                      "provBI" ="Biella",
+                      "provBL" = "Belluno",
+                      "provBO" ="Bologna",
+                      "provBS" ="Brescia",
+                      "provCN" = "Cuneo",
+                      "provCR" = "Cremona",
+                      "provCS" ="Cosenza",
+                      "provEN" = "Enna", 
+                      "provLO" =  "Lodi",
+                      "provMC" = "Macerata",
+                      "provMI" =  "Milano",
+                      "provMN" =    "Mantova",
+                      "provMO" = "Modena",
+                      "provNO" =  "Novara",
+                      "provPC" = "Piacenza",
+                      "provPD" = "Padova",
+                      "provPN" =  "Pordenone",
+                      "provPR" ="Parma",
+                      "provPV" ="Pavia", 
+                      "provPZ" ="Potenza",
+                      "provRC" = "Reggio Calabria",
+                      "provRO" ="Rovigo",
+                      "provTO" =  "Torino",
+                      "provTV" = "Treviso", 
+                      "provVC" ="Vercelli",
+                      "provVI" ="Viterbo",
+                      "provVR" ="Verona"  
+  ), 
+  rate = exp(.)) 
+
+
+mapPr<- province %>%  
+  filter(NAME_2 %in%pr) %>% 
+  left_join(rate, by = c("NAME_2" = "prov"))
+
+
+RVH <- tm_shape(ITA)+tm_fill("white")+tm_borders("gray")+
+  tm_shape(REG)+tm_fill("white")+tm_borders("black")+
+  tm_shape(mapPr, id= "Name_2")+tm_fill("rate", palette = "Blues" )+tm_borders("black")+
+  tm_layout(main.title = "Rotavirus H  positive rate of pigs enteric cases ",
+            legend.title.size = 0.8,
+            legend.text.size = 0.6,
+            legend.position = c("right","top"),
+            legend.bg.color = "white",
+            legend.bg.alpha = 1)+
+  tm_scale_bar(breaks = c(0, 50, 100), text.size = .5,position = "left")+
+  tm_compass(type = "8star", position = c("right", "bottom")) 
+
+
+
+
 
 
 ###Influenza di RV su infezioni batteriche---
