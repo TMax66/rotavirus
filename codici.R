@@ -4,54 +4,310 @@ source("preparazione dati.R")
 
 
 ##Modelli di poisson-----
-
-
-
-dtYM <- expand_grid(codaz = levels(factor(dt$codaz)),
-  year = c("2016", "2017",  "2018",  "2019"), 
-                    month = c( "01", "02",  "03",  "04",  "05",  "06",  "07", "08", "09", "10",  "11",  "12" ), 
-ageclass = levels(factor(dt$ageclass)), 
- 
-)
- 
 DT <- dt %>% 
   group_by(codaz, year, month, ageclass,  RV) %>% count() %>% 
   pivot_wider(names_from = "RV", values_from ="n", values_fill = 0 ) %>% 
-  mutate(Conferiti = P+N) %>% 
-     right_join(dtYM, 
-              by = c("codaz", "year", "month", "ageclass"))    
-   
-  
-DT[is.na(DT)] <- 0
+  mutate(Conferiti = P+N, 
+         YPeriod = recode(month, 
+                          "01" = "Winter", 
+                          "02" = "Winter",
+                          "03" = "Spring",
+                          "04" = "Spring",
+                          "05" = "Spring",
+                          "06" = "Summer",
+                          "07" = "Summer",
+                          "08" = "Summer",
+                          "09" = "Autumn", 
+                          "10" = "Autumn",
+                          "11" = "Autumn",
+                          "12" = "Autumn"), 
+         prov = substr(codaz, 4,5)) %>% 
+  select(-N)
 
-DT <- DT %>% 
-  mutate(quarter = recode(month, 
-                         "01" = "Q1", 
-                         "02" = "Q1",
-                         "03" = "Q1",
-                         "04" = "Q2",
-                         "05" = "Q2",
-                         "06" = "Q2",
-                         "07" = "Q3",
-                         "08" = "Q3",
-                         "09" = "Q3", 
-                         "10" = "Q4",
-                         "11" = "Q4",
-                         "12" = "Q4"), 
-         prov = substr(codaz, 4,5))
 DT <- DT %>% 
   filter(prov!= "FE")
-#Poisson Regression
+
+fit0p <- stan_glmer(P ~ 1+(1|codaz)+offset(log(Conferiti)), 
+                    family="poisson", data = DT, seed = 123, control = list(adapt_delta = 0.99),
+                    cores = 8)
 
 
-fit <- glm(P ~ ageclass+ quarter + prov , family="poisson", data=DT, offset = Conferiti)
-
-plot_model(fit, transform = NULL)
-
-fitPr <- glm(P ~ 0+ prov , family="poisson", data=DT, offset = Conferiti)
 
 
-glm(P ~ 1  , family="poisson", data=subset(DT, DT$Conferiti>0), offset(log(Conferiti)))
+
+
+
+library(rstanarm)
+
+
+
+fit0 <- stan_glmer(P ~ 1+(1|codaz)+offset(log(Conferiti)), 
+                      family="poisson", data = DT, seed = 123, control = list(adapt_delta = 0.99),
+                      cores = 8)
+ 
+
+###modello per rate province
+fit1 <- stan_glmer(P ~ 0+prov+(1|codaz)+offset(log(Conferiti)), 
+                   family="poisson", data = DT, seed = 123, control = list(adapt_delta = 0.99),
+                   cores = 8)
+
+rate <- fit1$coefficients %>% as.data.frame()  
+
+rate <-  rownames_to_column(rate, "prov")
+rate <- rate[1:29,]
+
+rate <- rate %>% 
+  mutate(prov= recode(prov, 
+                      "provAP" = "Ascoli Piceno", 
+                      "provBG" = "Bergamo", 
+                      "provBI" ="Biella",
+                      "provBL" = "Belluno",
+                      "provBO" ="Bologna",
+                      "provBS" ="Brescia",
+                      "provCN" = "Cuneo",
+                      "provCR" = "Cremona",
+                      "provCS" ="Cosenza",
+                      "provEN" = "Enna", 
+                      "provLO" =  "Lodi",
+                      "provMC" = "Macerata",
+                      "provMI" =  "Milano",
+                      "provMN" =    "Mantova",
+                      "provMO" = "Modena",
+                      "provNO" =  "Novara",
+                      "provPC" = "Piacenza",
+                      "provPD" = "Padova",
+                      "provPN" =  "Pordenone",
+                      "provPR" ="Parma",
+                      "provPV" ="Pavia", 
+                      "provPZ" ="Potenza",
+                      "provRC" = "Reggio Calabria",
+                      "provRO" ="Rovigo",
+                      "provTO" =  "Torino",
+                      "provTV" = "Treviso", 
+                      "provVC" ="Vercelli",
+                      "provVI" ="Viterbo",
+                      "provVR" ="Verona"  
+  ), 
+  rate = exp(.)) 
+
+
+
+
+
+
+
+library(sjPlot)
+###RV----
+
+fit2 <- stan_glmer(P ~  YPeriod+ ageclass+(1|codaz)+offset(log(Conferiti)), 
+                   family="poisson", data = DT, seed = 123, control = list(adapt_delta = 0.99),
+                   cores = 8)
+
+
+plot_model(fit2,   show.values = TRUE, value.offset = .3) +
+  theme_ipsum_rc()
+
+
+
+plot(p_direction(fit2))+scale_fill_brewer(palette="Blues")+
+  theme_ipsum_rc()
+  
+
+###RVA----
+
+RVA <- dt %>% 
+  group_by(codaz, year, month, ageclass,  RVA) %>% count() %>%  
+  pivot_wider(names_from = "RVA", values_from ="n", values_fill = 0 ) %>% 
+  mutate(Conferiti = P+N, 
+         YPeriod = recode(month, 
+                          "01" = "Winter", 
+                          "02" = "Winter",
+                          "03" = "Spring",
+                          "04" = "Spring",
+                          "05" = "Spring",
+                          "06" = "Summer",
+                          "07" = "Summer",
+                          "08" = "Summer",
+                          "09" = "Autumn", 
+                          "10" = "Autumn",
+                          "11" = "Autumn",
+                          "12" = "Autumn"), 
+         prov = substr(codaz, 4,5)) %>% 
+  select(-N)
+
+RVA <- RVA %>% 
+  filter(prov!= "FE")
+
+fitRVA <- stan_glmer(P ~  YPeriod+ ageclass+(1|codaz)+offset(log(Conferiti)), 
+                 family="poisson", data = RVA, seed = 123, control = list(adapt_delta = 0.99),
+                 cores = 8)
+
+plot_model(fitRVA, type = "est",show.values = TRUE,  value.offset = .3,show.intercept = T) +
+  theme_ipsum_rc()
+plot(p_direction(fit2))+scale_fill_brewer(palette="Blues")+
+  theme_ipsum_rc()
+
+
+#RVA modello per mappa
+
+RVAmp <- stan_glmer(P ~ 0+prov+(1|codaz)+offset(log(Conferiti)), 
+                   family="poisson", data = RVA, seed = 123, control = list(adapt_delta = 0.99),
+                   cores = 8)
+
+rate <- RVAmp$coefficients %>% as.data.frame()  
+
+rate <-  rownames_to_column(rate, "prov")
+rate <- rate[1:29,]
+
+rate <- rate %>% 
+  mutate(prov= recode(prov, 
+                      "provAP" = "Ascoli Piceno", 
+                      "provBG" = "Bergamo", 
+                      "provBI" ="Biella",
+                      "provBL" = "Belluno",
+                      "provBO" ="Bologna",
+                      "provBS" ="Brescia",
+                      "provCN" = "Cuneo",
+                      "provCR" = "Cremona",
+                      "provCS" ="Cosenza",
+                      "provEN" = "Enna", 
+                      "provLO" =  "Lodi",
+                      "provMC" = "Macerata",
+                      "provMI" =  "Milano",
+                      "provMN" =    "Mantova",
+                      "provMO" = "Modena",
+                      "provNO" =  "Novara",
+                      "provPC" = "Piacenza",
+                      "provPD" = "Padova",
+                      "provPN" =  "Pordenone",
+                      "provPR" ="Parma",
+                      "provPV" ="Pavia", 
+                      "provPZ" ="Potenza",
+                      "provRC" = "Reggio Calabria",
+                      "provRO" ="Rovigo",
+                      "provTO" =  "Torino",
+                      "provTV" = "Treviso", 
+                      "provVC" ="Vercelli",
+                      "provVI" ="Viterbo",
+                      "provVR" ="Verona"  
+  ), 
+  rate = exp(.)) 
+
+
+
+
+
+
+
+
+
+###RVB---
+
+###RVC---
+
+###RVH---
+
+
+###Influenza di RV su infezioni batteriche---
+##il tasso di positività a brachyspira cambia in caso di positività a RV e come?
+
+###Brachy---
+
+Brachy <- dt %>% 
+  filter(!is.na(brachyod) | !is.na(brachypil)) %>% 
+  mutate(Brachyspira = ifelse(brachyod=="Brachyod", "Pos", 
+                              ifelse(brachypil== "Brachypil", "Pos", "Neg"))) %>%  
+  select(Brachyspira, RVA,RVB, RVC, RVH, RV, ageclass,year, month, codaz) %>%  
+  group_by(codaz, year, month, ageclass,RVA,RVB, RVC, RVH, RV, Brachyspira) %>% count()  %>% 
+  pivot_wider(names_from = "Brachyspira", values_from ="n", values_fill = 0 ) %>% 
+  mutate(Conferiti = Pos+Neg, 
+         YPeriod = recode(month, 
+                          "01" = "Winter", 
+                          "02" = "Winter",
+                          "03" = "Spring",
+                          "04" = "Spring",
+                          "05" = "Spring",
+                          "06" = "Summer",
+                          "07" = "Summer",
+                          "08" = "Summer",
+                          "09" = "Autumn", 
+                          "10" = "Autumn",
+                          "11" = "Autumn",
+                          "12" = "Autumn"), 
+         prov = substr(codaz, 4,5)) %>% 
+  select(-Neg)
+
+Brachy <- Brachy %>% 
+  filter(prov!= "FE" & ageclass!= "svezzamento")  
+  
+
+fitBrachy1 <- stan_glmer(Pos ~  YPeriod+ ageclass+ RV + (1|codaz)+offset(log(Conferiti)), 
+                     family="poisson", data = Brachy, seed = 123, control = list(adapt_delta = 0.99),
+                     cores = 8)
+  
+plot_model(fitBrachy1, type = "est",show.values = TRUE,  value.offset = .3,show.intercept = T) +
+  theme_ipsum_rc()
+plot(p_direction(fitBrachy1))+scale_fill_brewer(palette="Blues")+
+  theme_ipsum_rc()
+
+
+
+fitBrachy12 <- stan_glmer(Pos ~  YPeriod+ ageclass+ RVA+RVB+RVC+RVH + (1|codaz)+offset(log(Conferiti)), 
+                         family="poisson", data = Brachy, seed = 123, control = list(adapt_delta = 0.99),
+                         cores = 8)
+
+plot_model(fitBrachy12, type = "est",show.values = TRUE,  value.offset = .3,show.intercept = T) +
+  theme_ipsum_rc()
+plot(p_direction(fitBrachy12))+scale_fill_brewer(palette="Blues")+
+  theme_ipsum_rc()
+
+
+##modello binomiale---
+
+modbrachy <- stan_glmer(formula = Brachyspira ~   stagione + ageclass+(1|codaz)
+                        + RVA + RVB + RVC + RVH,
+                        data=Brachybinom,
+                        family = binomial(link = logit), 
+                        cores=8,
+                        seed = 1966)
+
+
+
+plot_model(modbrachy, type = "est",show.values = TRUE, value.offset = .3) +
+  theme_ipsum_rc()
+
+plot(p_direction(modbrachy))+scale_fill_brewer(palette="Blues")+
+  theme_ipsum_rc()
+
+
+
+modclost <- stan_glmer(formula = Clostridi ~   stagione + ageclass+(1|codaz)
+                       + RVA + RVB + RVC + RVH,
+                       data=Clostr,
+                       family = binomial(link = logit), 
+                       cores=8,
+                       seed = 1966)
+plot_model(modclost, type = "est",show.values = TRUE, value.offset = .3) +
+  theme_ipsum_rc()
+
+plot(p_direction(modclost))+scale_fill_brewer(palette="Blues")+
+  theme_ipsum_rc()
+
+
+
+modlaws <- stan_glmer(formula = Lawsonia ~   stagione + ageclass+(1|codaz)
+                      + RVA + RVB + RVC + RVH,
+                      data=Lawsonia,
+                      family = binomial(link = logit), 
+                      cores=8,
+                      seed = 1966)
+
+plot_model(modlaws, type = "est",show.values = TRUE, value.offset = .3) +
+  theme_ipsum_rc()
+plot(p_direction(modlaws))+scale_fill_brewer(palette="Blues")+
+  theme_ipsum_rc()
+
+ 
 
 #maps
 
@@ -69,46 +325,49 @@ pr <- c("Ascoli Piceno", "Bergamo",  "Biella",  "Belluno",  "Bologna",  "Brescia
         "Reggio Calabria", "Rovigo", "Torino",  "Treviso",  "Vercelli",  "Viterbo",  "Verona")
 
 mapPr<- province %>%  
-  filter(NAME_2 %in%pr)
-tm_shape(ITA)+tm_fill()+tm_borders("gray")+
-  tm_shape(REG)+tm_fill()+tm_borders("black")+
-  tm_shape(mapPr, id= "Name_2")+tm_fill("lightblue")+tm_borders("black")
+  filter(NAME_2 %in%pr) %>% 
+  left_join (rate, by = c("NAME_2" = "prov"))# usa il data.frame rate per prendere i tassi per provincia stimati col modello
 
 
-DT %>% 
-  group_by(prov) %>% 
-  summarise(pos = sum(P), 
-            conf = sum(Conferiti), 
-            I = pos/conf)
+tmap_mode("plot")
+tm_shape(ITA)+tm_fill(col = "white")+tm_borders("gray")+
+  tm_shape(REG)+tm_fill(col = "white")+tm_borders("black")+
+  tm_shape(mapPr)+tm_fill("rate", id = "NAME_2", alpha = 0.5, palette = "Blues")+tm_borders("black")+
+  tm_scale_bar(breaks = c(0, 100, 200), text.size = .8,position = "left")+
+  tm_layout(main.title = "Rotavirus A positive rate of pigs enteric cases ",
+            title.size = 0.6,
+            legend.title.size = 0.6,
+            legend.text.size = 0.6,
+            legend.position = c("right", "top"),
+            legend.bg.color = "white",
+             
+            legend.bg.alpha = 1)
+  
+ 
 
+ 
+ 
 
-DTx <- DT %>% 
-  group_by(prov, ageclass, year, quarter) %>% 
-  summarise(P = sum(P), 
-            N = sum(N), 
-            Conferiti = sum(Conferiti))
-
-glm(P ~ 1  , family="poisson", data=DTx, offset = Conferiti)
 
 
 ##Modelli di regressione rotavirus-----
 
-RV <- stan_glmer(RV~0+as.factor(stagione)+as.factor(ageclass)+(1|codaz), 
-           data = Rota, 
-           family = binomial(link = logit), 
-           # prior = student_t(df=7, location = 0, scale = 2.5), 
-           # prior_intercept = student_t(df=7, location = 0, scale = 2.5), 
-           cores = 8, seed = 1966)
-RVloo <- loo(RV)
-
-RVint <- stan_glmer(RV~stagione*ageclass+(1|codaz), 
-                 data = Rota, 
-                 family = binomial(link = logit), 
-                 # prior = student_t(df=7, location = 0, scale = 2.5), 
-                 # prior_intercept = student_t(df=7, location = 0, scale = 2.5), 
-                 cores = 8, seed = 1966)
-
-RVintloo <- loo(RVint)
+# RV <- stan_glmer(RV~0+as.factor(stagione)+as.factor(ageclass)+(1|codaz), 
+#            data = Rota, 
+#            family = binomial(link = logit), 
+#            # prior = student_t(df=7, location = 0, scale = 2.5), 
+#            # prior_intercept = student_t(df=7, location = 0, scale = 2.5), 
+#            cores = 8, seed = 1966)
+# RVloo <- loo(RV)
+# 
+# RVint <- stan_glmer(RV~stagione*ageclass+(1|codaz), 
+#                  data = Rota, 
+#                  family = binomial(link = logit), 
+#                  # prior = student_t(df=7, location = 0, scale = 2.5), 
+#                  # prior_intercept = student_t(df=7, location = 0, scale = 2.5), 
+#                  cores = 8, seed = 1966)
+# 
+# RVintloo <- loo(RVint)
 
 library(sjPlot)
 
@@ -216,9 +475,40 @@ plot(p_direction(modlaws))+scale_fill_brewer(palette="Blues")+
   theme_ipsum_rc()
 
 
+#OLD STUFF----
 
+# dtYM <- expand_grid(codaz = levels(factor(dt$codaz)),
+#   year = c("2016", "2017",  "2018",  "2019"), 
+#                     month = c( "01", "02",  "03",  "04",  "05",  "06",  "07", "08", "09", "10",  "11",  "12" ), 
+# ageclass = levels(factor(dt$ageclass)), 
+#  
+# )
 
-
+# DT <- dt %>% 
+#   group_by(codaz, year, month, ageclass,  RV) %>% count() %>% 
+#   pivot_wider(names_from = "RV", values_from ="n", values_fill = 0 ) %>% 
+#   mutate(Conferiti = P+N) %>% 
+#      right_join(dtYM, 
+#               by = c("codaz", "year", "month", "ageclass"))    
+#    
+#   
+# DT[is.na(DT)] <- 0
+# 
+# DT <- DT %>% 
+#   mutate(quarter = recode(month, 
+#                          "01" = "Q1", 
+#                          "02" = "Q1",
+#                          "03" = "Q1",
+#                          "04" = "Q2",
+#                          "05" = "Q2",
+#                          "06" = "Q2",
+#                          "07" = "Q3",
+#                          "08" = "Q3",
+#                          "09" = "Q3", 
+#                          "10" = "Q4",
+#                          "11" = "Q4",
+#                          "12" = "Q4"), 
+#          prov = substr(codaz, 4,5))
 
 
 
