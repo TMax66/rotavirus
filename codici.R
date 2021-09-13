@@ -21,11 +21,16 @@ DT <- dt %>%
                           "10" = "Autumn",
                           "11" = "Autumn",
                           "12" = "Autumn"), 
+         Yperiod = factor(YPeriod),
+         Yperiod = relevel(Yperiod, ref = "Summer"),
          prov = substr(codaz, 4,5)) %>% 
   select(-N)
 
 DT <- DT %>% 
   filter(prov!= "FE")
+
+
+ 
 
 fit0p <- stan_glmer(P ~ 1+(1|codaz)+offset(log(Conferiti)), 
                     family="poisson", data = DT, seed = 123, control = list(adapt_delta = 0.99),
@@ -37,7 +42,7 @@ fit0p <- stan_glmer(P ~ 1+(1|codaz)+offset(log(Conferiti)),
 
 
 
-library(rstanarm)
+
 
 
 
@@ -46,7 +51,7 @@ fit0 <- stan_glmer(P ~ 1+(1|codaz)+offset(log(Conferiti)),
                       cores = 8)
  
 
-###modello per rate province
+###modello per rate province----
 fit1 <- stan_glmer(P ~ 0+prov+(1|codaz)+offset(log(Conferiti)), 
                    family="poisson", data = DT, seed = 123, control = list(adapt_delta = 0.99),
                    cores = 8)
@@ -88,7 +93,8 @@ rate <- rate %>%
                       "provVI" ="Viterbo",
                       "provVR" ="Verona"  
   ), 
-  rate = exp(.)) 
+  rate = exp(.), 
+  rate10 = rate*10) 
 
 
 
@@ -112,7 +118,7 @@ mapPr<- province %>%
 
 RV <- tm_shape(ITA)+tm_fill("white")+tm_borders("gray")+
   tm_shape(REG)+tm_fill("white")+tm_borders("black")+
-  tm_shape(mapPr, id= "Name_2")+tm_fill("rate", palette = "Blues" )+tm_borders("black")+
+  tm_shape(mapPr, id= "Name_2")+tm_fill("rate10", palette = "Blues" )+tm_borders("black")+
   tm_layout(main.title = "Rotavirus positive rate of pigs enteric cases ",
             legend.title.size = 0.8,
             legend.text.size = 0.6,
@@ -135,7 +141,7 @@ RV <- tm_shape(ITA)+tm_fill("white")+tm_borders("gray")+
 library(sjPlot)
 ###RV----
 
-fit2 <- stan_glmer(P ~  YPeriod+ ageclass+(1|codaz)+offset(log(Conferiti)), 
+fit2 <- stan_glmer(P ~  Yperiod+ ageclass+(1|codaz)+offset(log(Conferiti)), 
                    family="poisson", data = DT, seed = 123, control = list(adapt_delta = 0.99),
                    cores = 8)
 
