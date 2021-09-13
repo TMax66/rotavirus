@@ -3,6 +3,8 @@ dati <- read_excel("data/Dati epidemiogici RV_2016-2019-070621.xlsx")
 ## data handling----
 
 dt <- dati %>% 
+  
+  
   mutate( nconf = str_remove_all(nconf, " "),
           #nconf = str_c(year, nconf), 
           codaz = str_to_upper(codaz), 
@@ -10,6 +12,8 @@ dt <- dati %>%
           ageclass = str_remove(ageclass, "Suino"),
           ageclass = str_remove(ageclass, "suino"),
           ageclass = str_remove(ageclass, " "),
+          ageclass = recode(ageclass, 
+                            "magronaggio" = "ingrasso"), 
           prelievo = str_c(day, "-", month, "-", year), 
           dtprelievo = dmy(prelievo), 
           Year = year(dtprelievo), 
