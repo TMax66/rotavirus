@@ -23,7 +23,10 @@ DT <- dt %>%
                           "12" = "Autumn"), 
          Yperiod = factor(YPeriod),
          Yperiod = relevel(Yperiod, ref = "Summer"),
-         prov = substr(codaz, 4,5)) %>% 
+         prov = substr(codaz, 4,5), 
+         Ageclass = factor(ageclass), 
+         Ageclass = relevel(Ageclass, ref = "ingrasso")
+         ) %>% 
   select(-N)
 
 DT <- DT %>% 
@@ -128,20 +131,12 @@ RV <- tm_shape(ITA)+tm_fill("white")+tm_borders("gray")+
   tm_scale_bar(breaks = c(0, 50, 100), text.size = .5,position = "left")+
   tm_compass(type = "8star", position = c("right", "bottom")) 
   
-  
-  
-
-
-
-
-
-
 
 
 library(sjPlot)
 ###RV----
 
-fit2 <- stan_glmer(P ~  Yperiod+ ageclass+(1|codaz)+offset(log(Conferiti)), 
+fit2 <- stan_glmer(P ~  Yperiod+ Ageclass+(1|codaz)+offset(log(Conferiti)), 
                    family="poisson", data = DT, seed = 123, control = list(adapt_delta = 0.99),
                    cores = 8)
 
