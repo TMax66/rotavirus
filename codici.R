@@ -35,29 +35,23 @@ DT <- DT %>%
 
  
 
-fit0p <- stan_glmer(P ~ 1+(1|codaz)+offset(log(Conferiti)), 
-                    family="poisson", data = DT, seed = 123, control = list(adapt_delta = 0.99),
-                    cores = 8)
+# fit0p <- stan_glmer(P ~ 1+(1|codaz)+offset(log(Conferiti)), 
+#                     family="poisson", data = DT, seed = 123, control = list(adapt_delta = 0.99),
+#                     cores = 8)
 
 
 
 
-
-
-
-
-
-
-
-fit0 <- stan_glmer(P ~ 1+(1|codaz)+offset(log(Conferiti)), 
-                      family="poisson", data = DT, seed = 123, control = list(adapt_delta = 0.99),
-                      cores = 8)
- 
+# fit0 <- stan_glmer(P ~ 1+(1|codaz)+offset(log(Conferiti)), 
+#                       family="poisson", data = DT, seed = 123, control = list(adapt_delta = 0.99),
+#                       cores = 8)
+#  
 
 ###modello per rate province----
 fit1 <- stan_glmer(P ~ 0+prov+(1|codaz)+offset(log(Conferiti)), 
                    family="poisson", data = DT, seed = 123, control = list(adapt_delta = 0.99),
                    cores = 8)
+saveRDS(fit1, "mapRVmodel.RDS")
 
 rate <- fit1$coefficients %>% as.data.frame()  
 
@@ -96,8 +90,7 @@ rate <- rate %>%
                       "provVI" ="Viterbo",
                       "provVR" ="Verona"  
   ), 
-  rate = exp(.), 
-  rate10 = rate*10) 
+  rate = exp(.))
 
 
 
@@ -121,10 +114,10 @@ mapPr<- province %>%
 
 RV <- tm_shape(ITA)+tm_fill("white")+tm_borders("gray")+
   tm_shape(REG)+tm_fill("white")+tm_borders("black")+
-  tm_shape(mapPr, id= "Name_2")+tm_fill("rate10", palette = "Blues" )+tm_borders("black")+
+  tm_shape(mapPr, id= "Name_2")+tm_fill("rate", palette = "Blues" )+tm_borders("black")+
   tm_layout(main.title = "Rotavirus positive rate of pigs enteric cases ",
-            legend.title.size = 0.8,
-            legend.text.size = 0.6,
+            legend.title.size = 0.5,
+            legend.text.size = 0.4,
             legend.position = c("right","top"),
             legend.bg.color = "white",
             legend.bg.alpha = 1)+
@@ -139,7 +132,7 @@ library(sjPlot)
 fit2 <- stan_glmer(P ~  Yperiod+ Ageclass+(1|codaz)+offset(log(Conferiti)), 
                    family="poisson", data = DT, seed = 123, control = list(adapt_delta = 0.99),
                    cores = 8)
-
+saveRDS(fit2, "RVmodel.RDS")
 
 plot_model(fit2,   show.values = TRUE, value.offset = .3) +
   theme_ipsum_rc()
@@ -181,6 +174,8 @@ fitRVA <- stan_glmer(P ~  YPeriod+ ageclass+(1|codaz)+offset(log(Conferiti)),
                  family="poisson", data = RVA, seed = 123, control = list(adapt_delta = 0.99),
                  cores = 8)
 
+saveRDS(fitRVA, "RVAmodel.RDS")
+
 plot_model(fitRVA, type = "est",show.values = TRUE,  value.offset = .3,show.intercept = T) +
   theme_ipsum_rc()
 plot(p_direction(fit2))+scale_fill_brewer(palette="Blues")+
@@ -191,7 +186,9 @@ plot(p_direction(fit2))+scale_fill_brewer(palette="Blues")+
 
 RVAmp <- stan_glmer(P ~ 0+prov+(1|codaz)+offset(log(Conferiti)), 
                    family="poisson", data = RVA, seed = 123, control = list(adapt_delta = 0.99),
-                   cores = 8)
+               cores = 8)
+
+saveRDS(RVAmp, "RVAMapmodel.RDS")
 
 rate <- RVAmp$coefficients %>% as.data.frame()  
 
@@ -284,6 +281,8 @@ RVBmp <- stan_glmer(P ~ 0+prov+(1|codaz)+offset(log(Conferiti)),
                     family="poisson", data = RVB, seed = 123, control = list(adapt_delta = 0.99),
                     cores = 8)
 
+saveRDS(RVBmp, "RVBMapmodel.RDS")
+
 rate <- RVBmp$coefficients %>% as.data.frame()  
 
 rate <-  rownames_to_column(rate, "prov")
@@ -341,7 +340,10 @@ RVB <- tm_shape(ITA)+tm_fill("white")+tm_borders("gray")+
   tm_scale_bar(breaks = c(0, 50, 100), text.size = .5,position = "left")+
   tm_compass(type = "8star", position = c("right", "bottom")) 
 
-
+fitRVB <- stan_glmer(P ~  YPeriod+ ageclass+(1|codaz)+offset(log(Conferiti)), 
+                     family="poisson", data = RVB, seed = 123, control = list(adapt_delta = 0.99),
+                     cores = 8)
+saveRDS(fitRVB, "fitRVB.RDS")
 
 ###RVC---
 RVC <- dt %>% 
@@ -370,7 +372,7 @@ RVC <- RVC %>%
 RVCmp <- stan_glmer(P ~ 0+prov+(1|codaz)+offset(log(Conferiti)), 
                     family="poisson", data = RVC, seed = 123, control = list(adapt_delta = 0.99),
                     cores = 8)
-
+saveRDS(RVCmp, "RVCMapmodel.RDS")
 
 rate <- RVCmp$coefficients %>% as.data.frame()  
 
@@ -430,6 +432,10 @@ RVC <- tm_shape(ITA)+tm_fill("white")+tm_borders("gray")+
   tm_compass(type = "8star", position = c("right", "bottom")) 
 
 
+fitRVC <- stan_glmer(P ~  YPeriod+ ageclass+(1|codaz)+offset(log(Conferiti)), 
+                     family="poisson", data = RVC, seed = 123, control = list(adapt_delta = 0.99),
+                     cores = 8)
+saveRDS(fitRVC, "fitRVCmodel.RDS")
 
 
 ###RVH---
@@ -518,7 +524,10 @@ RVH <- tm_shape(ITA)+tm_fill("white")+tm_borders("gray")+
   tm_compass(type = "8star", position = c("right", "bottom")) 
 
 
-
+fitRVH <- stan_glmer(P ~  YPeriod+ ageclass+(1|codaz)+offset(log(Conferiti)), 
+                     family="poisson", data = RVH, seed = 123, control = list(adapt_delta = 0.99),
+                     cores = 8)
+saveRDS(fitRVH, "fitRVH.RDS")
 
 
 
