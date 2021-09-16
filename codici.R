@@ -52,8 +52,10 @@ fit1 <- stan_glmer(P ~ 0+prov+(1|codaz)+offset(log(Conferiti)),
                    family="poisson", data = DT, seed = 123, control = list(adapt_delta = 0.99),
                    cores = 8)
 saveRDS(fit1, "mapRVmodel.RDS")
+rate <- readRDS("mapRVmodel.RDS")
 
-rate <- fit1$coefficients %>% as.data.frame()  
+
+rate <- rate$coefficients %>% as.data.frame()  
 
 rate <-  rownames_to_column(rate, "prov")
 rate <- rate[1:29,]
@@ -90,7 +92,8 @@ rate <- rate %>%
                       "provVI" ="Viterbo",
                       "provVR" ="Verona"  
   ), 
-  rate = exp(.))
+  rate = exp(.), 
+  rate = 10*rate)
 
 
 
@@ -116,8 +119,8 @@ RV <- tm_shape(ITA)+tm_fill("white")+tm_borders("gray")+
   tm_shape(REG)+tm_fill("white")+tm_borders("black")+
   tm_shape(mapPr, id= "Name_2")+tm_fill("rate", palette = "Blues" )+tm_borders("black")+
   tm_layout(main.title = "Rotavirus positive rate of pigs enteric cases ",
-            legend.title.size = 0.5,
-            legend.text.size = 0.4,
+            legend.title.size = 0.6,
+            legend.text.size = 0.5,
             legend.position = c("right","top"),
             legend.bg.color = "white",
             legend.bg.alpha = 1)+
@@ -133,19 +136,47 @@ fit2 <- stan_glmer(P ~  Yperiod+ Ageclass+(1|codaz)+offset(log(Conferiti)),
                    family="poisson", data = DT, seed = 123, control = list(adapt_delta = 0.99),
                    cores = 8)
 saveRDS(fit2, "RVmodel.RDS")
+fit2 <- readRDS("RVmodel.RDS")
 
-plot_model(fit2,   show.values = TRUE, value.offset = .3) +
-  theme_ipsum_rc()
+
+
+
+plot_model(fit2,   show.values = TRUE, value.offset = .3, show.intercept = TRUE, show.legend = TRUE) +
+  theme_ipsum_rc()+ labs(title = "Incidence Rate Ratios of RV positive on enteric cases/month", 
+                         caption = " il grafico riporta la stima dell'incidence rate ratio tra le diverse categorie di età e stagione: 
+                 La categoria di riferimento per la classe di età è l'ingrasso mentre per la stagione è Summer. 
+                 Il valore 1 indica che non c'è nessuna differenza tra la categoria considerata e quella di riferimento, 
+                 valori inferiori a 1 indicano una riduzione del tasso di positività a RV nella categoria considerata rispetto a quella di 
+                 riferimento, mentre valori superiori a 1 indicano un'aumento. Ad esempio Il tasso di positività di RV in primavera è 1.24 volte 
+                 superiore a quello che si osserva in estate. Il tasso di positività allo svezzamento è 1.10 volte più elevato di quello
+                 dell'ingrasso.... Il tasso di postività osservato in inverno è 0.98 volte inferiore a quello osservato in Estate e 
+                 il tasso di positività nei riproduttori è 0.73 volte inferiore a quello degli animali all'ingrasso ...e cosi via...
+                 .. la barra indica la precisione della stima e descrive intervalli del 50 e del 95%.... trattandosi di modelli bayesiani
+                 non si calcola la significatività statistica ma si può misurare la % dei valori stimati dell'intervallo che sono a sinistra o a destra di 1 e 
+                 descrivere quindi la relativa importanza dell'effetto della categoria sul IRR... per fare questo si usa un altro grafico...")
+  
 
 
 tab_model(fit2)
 
-plot(p_direction(fit2))+scale_fill_brewer(palette="Blues")+
+plot(p_direction(fit2))+scale_fill_brewer(palette="Blues")+  
   theme_ipsum_rc()
   
+  
+result <- estimate_density(fit2)
+
+plot(result)
+plot(result, stack = FALSE)
+plot(result, stack = FALSE, priors = TRUE)
+result <- p_direction(fit2, effects = "all", component = "all")
+plot(result)
+result <- p_significance(fit2)
+result <- point_estimate(fit2)
+result <- si(fit2)
 
 
-###RVA----
+p <- p_direction(fit2)
+pd_to_p(0.9615)###RVA----
 
 RVA <- dt %>% 
   group_by(codaz, year, month, ageclass,  RVA) %>% count() %>%  
