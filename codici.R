@@ -137,12 +137,26 @@ fit2 <- stan_glmer(P ~  Yperiod+ Ageclass+(1|codaz)+offset(log(Conferiti)),
                    cores = 8)
 saveRDS(fit2, "RVmodel.RDS")
 fit2 <- readRDS("RVmodel.RDS")
+p <- plot(fit2, "hist", regex_pars = c("period", "Age"))+geom_vline(xintercept = 0, col = "red")
 
 
+p <- p[["data"]]
+
+p %>% 
+  ggplot(aes(y=exp(value), x = Parameter, fill = stat(abs(x) > 1)))+
+  stat_halfeye() +
+  coord_flip()+
+  geom_hline(yintercept = 1 )
+  
+
+
+library(ggstatsplot)
+ 
+ggcoefstats(fit2)
 
 
 plot_model(fit2,   show.values = TRUE, value.offset = .3, show.intercept = TRUE, show.legend = TRUE) +
-  theme_ipsum_rc()+ labs(title = "Incidence Rate Ratios of RV positive on enteric cases/month", 
+  theme_ipsum_rc()+ labs(title = "Incidence Rate Ratios of RV positive on enteritis cases/month", 
                          caption = " il grafico riporta la stima dell'incidence rate ratio tra le diverse categorie di età e stagione: 
                  La categoria di riferimento per la classe di età è l'ingrasso mentre per la stagione è Summer. 
                  Il valore 1 indica che non c'è nessuna differenza tra la categoria considerata e quella di riferimento, 
@@ -153,15 +167,20 @@ plot_model(fit2,   show.values = TRUE, value.offset = .3, show.intercept = TRUE,
                  il tasso di positività nei riproduttori è 0.73 volte inferiore a quello degli animali all'ingrasso ...e cosi via...
                  .. la barra indica la precisione della stima e descrive intervalli del 50 e del 95%.... trattandosi di modelli bayesiani
                  non si calcola la significatività statistica ma si può misurare la % dei valori stimati dell'intervallo che sono a sinistra o a destra di 1 e 
-                 descrivere quindi la relativa importanza dell'effetto della categoria sul IRR... per fare questo si usa un altro grafico...")
+                 descrivere quindi la relativa importanza dell'effetto della categoria sul IRR...  ")
   
 
 
 tab_model(fit2)
 
-plot(p_direction(fit2))+scale_fill_brewer(palette="Blues")+  
+plot(p_direction(fit2x))+scale_fill_brewer(palette="Blues")+  
   theme_ipsum_rc()
-  
+
+p_direction(fit2)
+
+pdr %>% View()
+ 
+
   
 result <- estimate_density(fit2)
 
@@ -176,7 +195,9 @@ result <- si(fit2)
 
 
 p <- p_direction(fit2)
-pd_to_p(0.9615)###RVA----
+pd_to_p(0.9615)
+
+###RVA----
 
 RVA <- dt %>% 
   group_by(codaz, year, month, ageclass,  RVA) %>% count() %>%  
@@ -195,21 +216,41 @@ RVA <- dt %>%
                           "10" = "Autumn",
                           "11" = "Autumn",
                           "12" = "Autumn"), 
-         prov = substr(codaz, 4,5)) %>% 
-  select(-N)
+         Yperiod = factor(YPeriod),
+         Yperiod = relevel(Yperiod, ref = "Summer"),
+         prov = substr(codaz, 4,5), 
+         Ageclass = factor(ageclass), 
+         Ageclass = relevel(Ageclass, ref = "ingrasso")
+  ) %>% 
+  select(-N ) 
+ 
 
 RVA <- RVA %>% 
   filter(prov!= "FE")
 
-fitRVA <- stan_glmer(P ~  YPeriod+ ageclass+(1|codaz)+offset(log(Conferiti)), 
+fitRVA <- stan_glmer(P ~  Yperiod+ Ageclass+(1|codaz)+offset(log(Conferiti)), 
                  family="poisson", data = RVA, seed = 123, control = list(adapt_delta = 0.99),
                  cores = 8)
 
 saveRDS(fitRVA, "RVAmodel.RDS")
+fitRVA <- readRDS("RVAmodel.RDS")
 
 plot_model(fitRVA, type = "est",show.values = TRUE,  value.offset = .3,show.intercept = T) +
-  theme_ipsum_rc()
-plot(p_direction(fit2))+scale_fill_brewer(palette="Blues")+
+  theme_ipsum_rc()+labs(title = "Incidence Rate Ratios of RVA positive on enteritis cases/month")
+
+
+p <- plot(fitRVA, "hist", regex_pars = c("period", "Age"))+geom_vline(xintercept = 0, col = "red")
+
+
+p <- p[["data"]]
+
+p %>% 
+  ggplot(aes(y=exp(value), x = Parameter))+
+  stat_halfeye() +
+  coord_flip()+
+  geom_hline(yintercept = 1 )
+
+plot(p_direction(fitRVA))+scale_fill_brewer(palette="Blues")+
   theme_ipsum_rc()
 
 
@@ -284,7 +325,7 @@ RVA <- tm_shape(ITA)+tm_fill("white")+tm_borders("gray")+
 
 
 
-###RVB---
+###RVB----
 RVB <- dt %>% 
   group_by(codaz, year, month, ageclass,  RVB) %>% count() %>%  
   pivot_wider(names_from = "RVB", values_from ="n", values_fill = 0 ) %>% 
@@ -302,8 +343,15 @@ RVB <- dt %>%
                           "10" = "Autumn",
                           "11" = "Autumn",
                           "12" = "Autumn"), 
-         prov = substr(codaz, 4,5)) %>% 
-  select(-N)
+         Yperiod = factor(YPeriod),
+         Yperiod = relevel(Yperiod, ref = "Summer"),
+         prov = substr(codaz, 4,5), 
+         Ageclass = factor(ageclass), 
+         Ageclass = relevel(Ageclass, ref = "ingrasso")
+  ) %>% 
+  select(-N )
+          
+ 
 
 RVB <- RVB %>% 
   filter(prov!= "FE")
@@ -371,12 +419,12 @@ RVB <- tm_shape(ITA)+tm_fill("white")+tm_borders("gray")+
   tm_scale_bar(breaks = c(0, 50, 100), text.size = .5,position = "left")+
   tm_compass(type = "8star", position = c("right", "bottom")) 
 
-fitRVB <- stan_glmer(P ~  YPeriod+ ageclass+(1|codaz)+offset(log(Conferiti)), 
+fitRVB <- stan_glmer(P ~  Yperiod+ Ageclass+(1|codaz)+offset(log(Conferiti)), 
                      family="poisson", data = RVB, seed = 123, control = list(adapt_delta = 0.99),
                      cores = 8)
 saveRDS(fitRVB, "fitRVB.RDS")
 
-###RVC---
+###RVC----
 RVC <- dt %>% 
   group_by(codaz, year, month, ageclass,  RVC) %>% count() %>%  
   pivot_wider(names_from = "RVC", values_from ="n", values_fill = 0 ) %>% 
@@ -394,8 +442,14 @@ RVC <- dt %>%
                           "10" = "Autumn",
                           "11" = "Autumn",
                           "12" = "Autumn"), 
-         prov = substr(codaz, 4,5)) %>% 
-  select(-N)
+         Yperiod = factor(YPeriod),
+         Yperiod = relevel(Yperiod, ref = "Summer"),
+         prov = substr(codaz, 4,5), 
+         Ageclass = factor(ageclass), 
+         Ageclass = relevel(Ageclass, ref = "ingrasso")
+  ) %>% 
+  select(-N )
+ 
 
 RVC <- RVC %>% 
   filter(prov!= "FE")
@@ -463,13 +517,13 @@ RVC <- tm_shape(ITA)+tm_fill("white")+tm_borders("gray")+
   tm_compass(type = "8star", position = c("right", "bottom")) 
 
 
-fitRVC <- stan_glmer(P ~  YPeriod+ ageclass+(1|codaz)+offset(log(Conferiti)), 
+fitRVC <- stan_glmer(P ~  Yperiod+ Ageclass+(1|codaz)+offset(log(Conferiti)), 
                      family="poisson", data = RVC, seed = 123, control = list(adapt_delta = 0.99),
                      cores = 8)
 saveRDS(fitRVC, "fitRVCmodel.RDS")
 
 
-###RVH---
+###RVH----
 RVH <- dt %>% 
   group_by(codaz, year, month, ageclass,  RVH) %>% count() %>%  
   pivot_wider(names_from = "RVH", values_from ="n", values_fill = 0 ) %>% 
@@ -487,7 +541,13 @@ RVH <- dt %>%
                           "10" = "Autumn",
                           "11" = "Autumn",
                           "12" = "Autumn"), 
-         prov = substr(codaz, 4,5)) %>% 
+         Yperiod = factor(YPeriod),
+         Yperiod = relevel(Yperiod, ref = "Summer"),
+         prov = substr(codaz, 4,5), 
+         Ageclass = factor(ageclass), 
+         Ageclass = relevel(Ageclass, ref = "ingrasso")
+  ) %>% 
+  
   select(-N)
 
 RVH <- RVH %>% 
@@ -555,7 +615,7 @@ RVH <- tm_shape(ITA)+tm_fill("white")+tm_borders("gray")+
   tm_compass(type = "8star", position = c("right", "bottom")) 
 
 
-fitRVH <- stan_glmer(P ~  YPeriod+ ageclass+(1|codaz)+offset(log(Conferiti)), 
+fitRVH <- stan_glmer(P ~  Yperiod+ Ageclass+(1|codaz)+offset(log(Conferiti)), 
                      family="poisson", data = RVH, seed = 123, control = list(adapt_delta = 0.99),
                      cores = 8)
 saveRDS(fitRVH, "fitRVH.RDS")
@@ -588,7 +648,13 @@ Brachy <- dt %>%
                           "10" = "Autumn",
                           "11" = "Autumn",
                           "12" = "Autumn"), 
-         prov = substr(codaz, 4,5)) %>% 
+         Yperiod = factor(YPeriod),
+         Yperiod = relevel(Yperiod, ref = "Summer"),
+         prov = substr(codaz, 4,5), 
+         Ageclass = factor(ageclass), 
+         Ageclass = relevel(Ageclass, ref = "ingrasso")
+  ) %>% 
+  select(-N ) 
   select(-Neg)
 
 Brachy <- Brachy %>% 

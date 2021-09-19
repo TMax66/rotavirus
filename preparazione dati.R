@@ -59,7 +59,7 @@ Clostr <- dt %>%
 
 
 Rota <- dt %>% 
-  select(RV,RVA,RVB, RVC, RVH, ageclass, stagione, codaz)
+  select(RV,RVA,RVB, RVC, RVH, Ageclass, stagione, codaz)
 
 Rota$RV <- as.numeric(as.factor(Rota$RV))-1
 Rota$RVA <- as.numeric(as.factor(Rota$RVA))-1
