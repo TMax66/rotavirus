@@ -4,7 +4,7 @@ source("preparazione dati.R")
 
 
 ##Modelli di poisson-----
-DT <- dt %>% 
+RV <- dt %>% 
   group_by(codaz, year, month, ageclass,  RV) %>% count() %>% 
   pivot_wider(names_from = "RV", values_from ="n", values_fill = 0 ) %>% 
   mutate(Conferiti = P+N, 
@@ -35,21 +35,10 @@ DT <- DT %>%
 
  
 
-# fit0p <- stan_glmer(P ~ 1+(1|codaz)+offset(log(Conferiti)), 
-#                     family="poisson", data = DT, seed = 123, control = list(adapt_delta = 0.99),
-#                     cores = 8)
-
-
-
-
-# fit0 <- stan_glmer(P ~ 1+(1|codaz)+offset(log(Conferiti)), 
-#                       family="poisson", data = DT, seed = 123, control = list(adapt_delta = 0.99),
-#                       cores = 8)
-#  
-
+ 
 ###modello per rate province----
 fit1 <- stan_glmer(P ~ 0+prov+(1|codaz)+offset(log(Conferiti)), 
-                   family="poisson", data = DT, seed = 123, control = list(adapt_delta = 0.99),
+                   family="poisson", data = RV, seed = 123, control = list(adapt_delta = 0.99),
                    cores = 8)
 saveRDS(fit1, "mapRVmodel.RDS")
 rate <- readRDS("mapRVmodel.RDS")
@@ -133,22 +122,22 @@ library(sjPlot)
 ###RV----
 
 fit2 <- stan_glmer(P ~  Yperiod+ Ageclass+(1|codaz)+offset(log(Conferiti)), 
-                   family="poisson", data = DT, seed = 123, control = list(adapt_delta = 0.99),
+                   family="poisson", data = RV, seed = 123, control = list(adapt_delta = 0.99),
                    cores = 8)
-saveRDS(fit2, "RVmodel.RDS")
-fit2 <- readRDS("RVmodel.RDS")
+fitRV <- fit2
+rm(fit2)
+saveRDS(fitRV, "RVmodel.RDS")
+fitRV <- readRDS("RVmodel.RDS")
 
-#tab_model(fit2)
-
-hdi(fit2)
+ 
 
 tRV <- describe_posterior(
- fit2,
+ fitRV,
   centrality = "median",
   test = c("rope", "p_direction")
 )
 
-library(gt)
+ 
 tRV %>% 
   select(Parameter, Median, CI_low, CI_high, pd, ROPE_Percentage, Rhat, ESS) %>%
   mutate_at(2:8, round, 2) %>% 
@@ -288,12 +277,15 @@ tRVA <- describe_posterior(
   rope_range = c(-0.1, 0.1)
 )
 
-library(gt)
+
 tRVA %>% 
   select(Parameter, Median, CI_low, CI_high, pd, ROPE_Percentage, Rhat, ESS) %>%
   mutate_at(2:8, round, 2) %>% 
   mutate(Parameter = str_remove(Parameter, "Yperiod"), 
-         Parameter = str_remove(Parameter, "Ageclass")) %>% 
+         Parameter = str_remove(Parameter, "Ageclass"),
+         Median = round(exp(Median),2), 
+         CI_low = round(exp(CI_low), 2), 
+         CI_high = round(exp(CI_high),2))%>% 
   gt() %>% 
   gtsave("RVA.rtf")
 
@@ -497,13 +489,15 @@ tRVB <- describe_posterior(
   test = c("rope", "p_direction"), 
   rope_range = c(-0.1, 0.1)
 )
-
-library(gt)
+ 
 tRVB %>% 
   select(Parameter, Median, CI_low, CI_high, pd, ROPE_Percentage, Rhat, ESS) %>%
   mutate_at(2:8, round, 2) %>% 
   mutate(Parameter = str_remove(Parameter, "Yperiod"), 
-         Parameter = str_remove(Parameter, "Ageclass")) %>% 
+         Parameter = str_remove(Parameter, "Ageclass"),
+         Median = round(exp(Median),2), 
+         CI_low = round(exp(CI_low), 2), 
+         CI_high = round(exp(CI_high),2))%>% 
   gt() %>% 
   gtsave("RVB.rtf")
 
@@ -616,12 +610,15 @@ tRVC <- describe_posterior(
   rope_range = c(-0.1, 0.1)
 )
 
-library(gt)
+
 tRVC %>% 
   select(Parameter, Median, CI_low, CI_high, pd, ROPE_Percentage, Rhat, ESS) %>%
   mutate_at(2:8, round, 2) %>% 
   mutate(Parameter = str_remove(Parameter, "Yperiod"), 
-         Parameter = str_remove(Parameter, "Ageclass")) %>% 
+         Parameter = str_remove(Parameter, "Ageclass"),
+         Median = round(exp(Median),2), 
+         CI_low = round(exp(CI_low), 2), 
+         CI_high = round(exp(CI_high),2))%>% 
   gt() %>% 
   gtsave("RVC.rtf")
 
@@ -735,7 +732,10 @@ tRVH %>%
   select(Parameter, Median, CI_low, CI_high, pd, ROPE_Percentage, Rhat, ESS) %>%
   mutate_at(2:8, round, 2) %>% 
   mutate(Parameter = str_remove(Parameter, "Yperiod"), 
-         Parameter = str_remove(Parameter, "Ageclass")) %>% 
+         Parameter = str_remove(Parameter, "Ageclass"),
+         Median = round(exp(Median),2), 
+         CI_low = round(exp(CI_low), 2), 
+         CI_high = round(exp(CI_high),2))%>% 
   gt() %>% 
   gtsave("RVH.rtf")
 
@@ -775,16 +775,16 @@ Brachy <- dt %>%
          Ageclass = factor(ageclass), 
          Ageclass = relevel(Ageclass, ref = "ingrasso")
   ) %>% 
-  select(-Neg)
-
-Brachy <- Brachy %>% 
+  select(-Neg) %>% 
   filter(prov!= "FE" & !ageclass %in% c("sottoscrofa", "svezzamento"))
   
 
-fitBrachy <- stan_glmer(Pos ~  Yperiod+ Ageclass+ RV + (1|codaz)+offset(log(Conferiti)), 
-                     family="poisson", data = Brachy, seed = 123, control = list(adapt_delta = 0.99),
-                     cores = 8)
 
+
+
+fitBrachy <- stan_glmer(Pos ~  Yperiod+ Ageclass+ RVA+RVB+RVC+RVH + (1|codaz)+offset(log(Conferiti)), 
+                         family="poisson", data = Brachy, seed = 123, control = list(adapt_delta = 0.99),
+                         cores = 8)
 
 saveRDS(fitBrachy, "fitBrachy.RDS")
 
@@ -797,60 +797,17 @@ tBrachy <- describe_posterior(
   rope_range = c(-0.1, 0.1)
 )
 
-library(gt)
+ 
 tBrachy %>% 
   select(Parameter, Median, CI_low, CI_high, pd, ROPE_Percentage, Rhat, ESS) %>%
   mutate_at(2:8, round, 2) %>% 
   mutate(Parameter = str_remove(Parameter, "Yperiod"), 
-         Parameter = str_remove(Parameter, "Ageclass")) %>% 
+         Parameter = str_remove(Parameter, "Ageclass"),
+         Median = round(exp(Median),2), 
+         CI_low = round(exp(CI_low), 2), 
+         CI_high = round(exp(CI_high),2))%>% 
   gt() %>% 
   gtsave("Brachy.rtf")
-
-
-  
-plot_model(fitBrachy1, type = "est",show.values = TRUE,  value.offset = .3,show.intercept = T) +
-  theme_ipsum_rc()
-plot(p_direction(fitBrachy1))+scale_fill_brewer(palette="Blues")+
-  theme_ipsum_rc()
-
-
-
-fitBrachy2 <- stan_glmer(Pos ~  Yperiod+ Ageclass+ RVA+RVB+RVC+RVH + (1|codaz)+offset(log(Conferiti)), 
-                         family="poisson", data = Brachy, seed = 123, control = list(adapt_delta = 0.99),
-                         cores = 8)
-
-saveRDS(fitBrachy2, "fitBrachy2.RDS")
-
-fitBrachy2<- readRDS("fitBrachy2.RDS")
-
-tBrachy2 <- describe_posterior(
-  fitBrachy2,
-  centrality = "median",
-  test = c("rope", "p_direction"), 
-  rope_range = c(-0.1, 0.1)
-)
-
- 
-tBrachy2 %>% 
-  select(Parameter, Median, CI_low, CI_high, pd, ROPE_Percentage, Rhat, ESS) %>%
-  mutate_at(2:8, round, 2) %>% 
-  mutate(Parameter = str_remove(Parameter, "Yperiod"), 
-         Parameter = str_remove(Parameter, "Ageclass")) %>% 
-  gt() %>% 
-  gtsave("Brachy2.rtf")
-
-
-
-
-
-
-
-# plot_model(fitBrachy12, type = "est",show.values = TRUE,  value.offset = .3,show.intercept = T) +
-#   theme_ipsum_rc()
-# plot(p_direction(fitBrachy12))+scale_fill_brewer(palette="Blues")+
-#   theme_ipsum_rc()
-
-
 
 
 ##Clostridi----
@@ -954,7 +911,7 @@ Laws <- dt %>%
 
 
 
-fitLaws <- stan_glmer(Pos ~  Yperiod+ RVA+RVB+RVC+RVH+(1|codaz)+offset(log(Conferiti)), 
+fitLaws <- stan_glmer(Pos ~  Yperiod+ Ageclass+RVA+RVB+RVC+RVH+(1|codaz)+offset(log(Conferiti)), 
                         family="poisson", data = Laws, seed = 123, control = list(adapt_delta = 0.99),
                         cores = 8)
 saveRDS(fitLaws, "fitLaws.RDS")
@@ -1253,6 +1210,42 @@ tPEDV %>%
 # 
 # 
 # #OLD STUFF----
+
+
+# fitBrachy <- stan_glmer(Pos ~  Yperiod+ Ageclass+ RV + (1|codaz)+offset(log(Conferiti)), 
+#                      family="poisson", data = Brachy, seed = 123, control = list(adapt_delta = 0.99),
+#                      cores = 8)
+# 
+# 
+# saveRDS(fitBrachy, "fitBrachy.RDS")
+# 
+# fitBrachy<- readRDS("fitBrachy.RDS")
+# 
+# tBrachy <- describe_posterior(
+#   fitBrachy,
+#   centrality = "median",
+#   test = c("rope", "p_direction"), 
+#   rope_range = c(-0.1, 0.1)
+# )
+# 
+# 
+# tBrachy %>% 
+#   select(Parameter, Median, CI_low, CI_high, pd, ROPE_Percentage, Rhat, ESS) %>%
+#   mutate_at(2:8, round, 2) %>% 
+#   mutate(Parameter = str_remove(Parameter, "Yperiod"), 
+#          Parameter = str_remove(Parameter, "Ageclass")) %>% 
+#   gt() %>% 
+#   gtsave("Brachy.rtf")
+# 
+# 
+#   
+# plot_model(fitBrachy1, type = "est",show.values = TRUE,  value.offset = .3,show.intercept = T) +
+#   theme_ipsum_rc()
+# plot(p_direction(fitBrachy1))+scale_fill_brewer(palette="Blues")+
+#   theme_ipsum_rc()
+
+
+
 # 
 # # dtYM <- expand_grid(codaz = levels(factor(dt$codaz)),
 # #   year = c("2016", "2017",  "2018",  "2019"), 
