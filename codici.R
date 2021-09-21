@@ -137,11 +137,15 @@ fit2 <- stan_glmer(P ~  Yperiod+ Ageclass+(1|codaz)+offset(log(Conferiti)),
                    cores = 8)
 saveRDS(fit2, "RVmodel.RDS")
 fit2 <- readRDS("RVmodel.RDS")
+
+#tab_model(fit2)
+
+hdi(fit2)
+
 tRV <- describe_posterior(
  fit2,
   centrality = "median",
-  test = c("rope", "p_direction"), 
- rope_range = c(-0.1, 0.1)
+  test = c("rope", "p_direction")
 )
 
 library(gt)
@@ -149,10 +153,13 @@ tRV %>%
   select(Parameter, Median, CI_low, CI_high, pd, ROPE_Percentage, Rhat, ESS) %>%
   mutate_at(2:8, round, 2) %>% 
   mutate(Parameter = str_remove(Parameter, "Yperiod"), 
-         Parameter = str_remove(Parameter, "Ageclass")) %>% 
+         Parameter = str_remove(Parameter, "Ageclass"),
+        Parameter = str_remove(Parameter, "Yperiod"), 
+                Median = round(exp(Median),2), 
+                CI_low = round(exp(CI_low), 2), 
+                CI_high = round(exp(CI_high),2))%>% 
   gt() %>% 
   gtsave("RV.rtf")
-  
   
   
  
@@ -214,7 +221,7 @@ tRV %>%
 #   
 
 
-#tab_model(fit2)
+#
 
 
 
@@ -771,7 +778,7 @@ Brachy <- dt %>%
   select(-Neg)
 
 Brachy <- Brachy %>% 
-  filter(prov!= "FE" & ageclass!= "svezzamento")  
+  filter(prov!= "FE" & !ageclass %in% c("sottoscrofa", "svezzamento"))
   
 
 fitBrachy <- stan_glmer(Pos ~  Yperiod+ Ageclass+ RV + (1|codaz)+offset(log(Conferiti)), 
@@ -850,17 +857,14 @@ tBrachy2 %>%
 
 Clostr <- dt %>% 
     filter(!is.na(Clperfr) | !is.na(Cldiff)) %>%
-    mutate(Clostridi = ifelse(Clperfr == "P", "Pos",
-                              ifelse(Cldiff == "P", "Pos", "N"))) %>% View()
-   select(Clostridi, RVA,RVB, RVC, RVH, RV, ageclass,year, month, codaz) %>%   
- 
-    
-    
-    
-    
-    
-     group_by(codaz, year, month, ageclass,RVA,RVB, RVC, RVH, RV, Brachyspira) %>% count()  %>% 
-  pivot_wider(names_from = "Brachyspira", values_from ="n", values_fill = 0 ) %>% 
+    mutate(Clperfr = as.numeric(factor(Clperfr))-1, 
+           Cldiff = as.numeric(factor(Cldiff))-1) %>% rowwise() %>% 
+    mutate(cl = sum(c(Clperfr, Cldiff), na.rm = TRUE), 
+           Clostridi = ifelse(cl == 0, "Neg", "Pos")) %>%   
+     select(Clostridi, RVA,RVB, RVC, RVH, RV, ageclass,year, month, codaz) %>%   
+     group_by(codaz, year, month, ageclass,RVA,RVB, RVC, RVH, RV, Clostridi) %>% 
+  count()  %>% 
+  pivot_wider(names_from = "Clostridi", values_from ="n", values_fill = 0 ) %>% 
   mutate(Conferiti = Pos+Neg, 
          YPeriod = recode(month, 
                           "01" = "Winter", 
@@ -881,11 +885,158 @@ Clostr <- dt %>%
          Ageclass = factor(ageclass), 
          Ageclass = relevel(Ageclass, ref = "ingrasso")
   ) %>% 
-  select(-Neg)
+  select(-Neg)%>% 
+  filter(prov!= "FE" & ageclass == "sottoscrofa")  
 
-Brachy <- Brachy %>% 
-  filter(prov!= "FE" & ageclass!= "svezzamento")  
 
+
+
+fitClostr <- stan_glmer(Pos ~  Yperiod+ RVA+RVB+RVC+RVH+(1|codaz)+offset(log(Conferiti)), 
+                        family="poisson", data = Clostr, seed = 123, control = list(adapt_delta = 0.99),
+                        cores = 8)
+
+
+saveRDS(fitClostr, "fitClostr.RDS")
+
+fitClostr<- readRDS("fitClostr.RDS")
+
+tClostr <- describe_posterior(
+  fitClostr,
+  centrality = "median",
+  test = c("rope", "p_direction"), 
+  rope_range = c(-0.1, 0.1)
+)
+
+
+tClostr %>% 
+  select(Parameter, Median, CI_low, CI_high, pd, ROPE_Percentage, Rhat, ESS) %>%
+  mutate_at(2:8, round, 2) %>% 
+  mutate(Parameter = str_remove(Parameter, "Yperiod"), 
+         Median = round(exp(Median),2), 
+         CI_low = round(exp(CI_low), 2), 
+         CI_high = round(exp(CI_high),2))%>% 
+  gt() %>% 
+  gtsave("Clostr.rtf")
+
+
+
+##Lawsonia----
+
+Laws <- dt %>% 
+  filter(!is.na(Lawsonia)) %>% 
+  mutate(Lawsonia = ifelse(Lawsonia == "N", "Neg", "Pos")) %>%  
+  select(Lawsonia, RVA,RVB, RVC, RVH, RV, ageclass,year, month, codaz) %>%   
+  group_by(codaz, year, month, ageclass,RVA,RVB, RVC, RVH, RV, Lawsonia) %>% 
+  count()  %>% 
+  pivot_wider(names_from = "Lawsonia", values_from ="n", values_fill = 0 ) %>%  
+  mutate(Conferiti = Pos+Neg, 
+         YPeriod = recode(month, 
+                          "01" = "Winter", 
+                          "02" = "Winter",
+                          "03" = "Spring",
+                          "04" = "Spring",
+                          "05" = "Spring",
+                          "06" = "Summer",
+                          "07" = "Summer",
+                          "08" = "Summer",
+                          "09" = "Autumn", 
+                          "10" = "Autumn",
+                          "11" = "Autumn",
+                          "12" = "Autumn"), 
+         Yperiod = factor(YPeriod),
+         Yperiod = relevel(Yperiod, ref = "Summer"),
+         prov = substr(codaz, 4,5), 
+         Ageclass = factor(ageclass), 
+         Ageclass = relevel(Ageclass, ref = "ingrasso")
+  ) %>% 
+  select(-Neg)%>% 
+  filter(prov!= "FE" & !ageclass %in% c("sottoscrofa", "svezzamento"))
+
+
+
+fitLaws <- stan_glmer(Pos ~  Yperiod+ RVA+RVB+RVC+RVH+(1|codaz)+offset(log(Conferiti)), 
+                        family="poisson", data = Laws, seed = 123, control = list(adapt_delta = 0.99),
+                        cores = 8)
+saveRDS(fitLaws, "fitLaws.RDS")
+
+fitLaws<- readRDS("fitLaws.RDS")
+
+tLaws <- describe_posterior(
+  fitLaws,
+  centrality = "median",
+  test = c("rope", "p_direction"), 
+  rope_range = c(-0.1, 0.1)
+)
+
+
+tLaws %>% 
+  select(Parameter, Median, CI_low, CI_high, pd, ROPE_Percentage, Rhat, ESS) %>%
+  mutate_at(2:8, round, 2) %>% 
+  mutate(Parameter = str_remove(Parameter, "Yperiod"), 
+         Median = round(exp(Median),2), 
+         CI_low = round(exp(CI_low), 2), 
+         CI_high = round(exp(CI_high),2))%>% 
+  gt() %>% 
+  gtsave("Laws.rtf")
+
+
+##PEDV----
+
+PEDV<- dt %>% 
+  filter(!is.na(PEDV)) %>%  
+  mutate(PEDV = ifelse(PEDV == "N", "Neg", "Pos")) %>%  
+  select(PEDV, RVA,RVB, RVC, RVH, RV, ageclass,year, month, codaz) %>%   
+  group_by(codaz, year, month, ageclass,RVA,RVB, RVC, RVH, RV, PEDV) %>% 
+  count()  %>% 
+  pivot_wider(names_from = "PEDV", values_from ="n", values_fill = 0 ) %>%  
+  mutate(Conferiti = Pos+Neg, 
+         YPeriod = recode(month, 
+                          "01" = "Winter", 
+                          "02" = "Winter",
+                          "03" = "Spring",
+                          "04" = "Spring",
+                          "05" = "Spring",
+                          "06" = "Summer",
+                          "07" = "Summer",
+                          "08" = "Summer",
+                          "09" = "Autumn", 
+                          "10" = "Autumn",
+                          "11" = "Autumn",
+                          "12" = "Autumn"), 
+         Yperiod = factor(YPeriod),
+         Yperiod = relevel(Yperiod, ref = "Summer"),
+         prov = substr(codaz, 4,5), 
+         Ageclass = factor(ageclass), 
+         Ageclass = relevel(Ageclass, ref = "ingrasso")
+  ) %>% 
+  select(-Neg)%>% 
+  filter(prov!= "FE" & !ageclass %in% c("sottoscrofa", "svezzamento"))
+
+fitPEDV <- stan_glmer(Pos ~  Yperiod+ RVA+RVB+RVC+RVH+(1|codaz)+offset(log(Conferiti)), 
+                      family="poisson", data = PEDV, seed = 123, control = list(adapt_delta = 0.99),
+                      cores = 8)
+
+saveRDS(fitLaws, "fitPEDV.RDS")
+
+fitPEDV<- readRDS("fitPEDV.RDS")
+
+tPEDV <- describe_posterior(
+  fitPEDV,
+  centrality = "median",
+  test = c("rope", "p_direction"), 
+  rope_range = c(-0.1, 0.1)
+)
+
+
+tPEDV %>% 
+  select(Parameter, Median, CI_low, CI_high, pd, ROPE_Percentage, Rhat, ESS) %>%
+  mutate_at(2:8, round, 2) %>% 
+  mutate(Parameter = str_remove(Parameter, "Yperiod"), 
+         Median = round(exp(Median),2), 
+         CI_low = round(exp(CI_low), 2), 
+         CI_high = round(exp(CI_high),2))%>% 
+  gt() %>% 
+  gtsave("PEDV.rtf")
 
 
 # ##modello binomiale---

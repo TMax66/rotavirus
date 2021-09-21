@@ -36,39 +36,3 @@ dt <- dati %>%
           stagione = ifelse(quart==1, "Winter", 
                             ifelse(quart==2, "Spring", 
                                    ifelse(quart==3, "Summer", "Autumn"))))
-# 
-# dt %>% 
-#   group_by(codaz, day, month, year) %>% 
-#   count() %>% View()
-
-# Brachybinom <- dt %>% 
-#   filter(!is.na(brachyod) | !is.na(brachypil)) %>% 
-#   mutate(Brachyspira = ifelse(brachyod=="Brachyod", "Pos", 
-#                               ifelse(brachypil== "Brachypil", "Pos", "Neg"))) %>%  
-#   select(Brachyspira, RVA,RVB, RVC, RVH, RV, ageclass, stagione, codaz)
-# 
-# Brachybinom$Brachyspira <- as.numeric(as.factor(Brachybinom$Brachyspira))-1
-# 
-# 
-# Clostr <- dt %>% 
-#   filter(!is.na(Clperfr) | !is.na(Cldiff)) %>% 
-#   mutate(Clostridi = ifelse(Clperfr == "P", "Pos", 
-#                             ifelse(Cldiff == "P", "Pos", "N"))) %>% 
-#   select(Clostridi, RVA,RVB, RVC, RVH, RV, ageclass, stagione, codaz)
-#  Clostr$Clostridi <- as.numeric(as.factor(Clostr$Clostridi))-1
-# 
-# 
-# Rota <- dt %>% 
-#   select(RV,RVA,RVB, RVC, RVH, Ageclass, stagione, codaz)
-# 
-# Rota$RV <- as.numeric(as.factor(Rota$RV))-1
-# Rota$RVA <- as.numeric(as.factor(Rota$RVA))-1
-# Rota$RVB <- as.numeric(as.factor(Rota$RVB))-1
-# Rota$RVC <- as.numeric(as.factor(Rota$RVC))-1
-# Rota$RVH <- as.numeric(as.factor(Rota$RVH))-1
-# 
-# Lawsonia <- dt %>% 
-#   filter(!is.na(Lawsonia) & ageclass != "sottoscrofa") %>% 
-#   mutate(Lawsonia = ifelse(Lawsonia == "P", "POS", "NEG")) %>% 
-#   select(Lawsonia, RVA,RVB, RVC, RVH, RV, ageclass, stagione, codaz)
-# Lawsonia$Lawsonia <- as.numeric(as.factor(Lawsonia$Lawsonia))-1
