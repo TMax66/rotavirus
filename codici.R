@@ -29,7 +29,7 @@ RV <- dt %>%
          ) %>% 
   select(-N)
 
-DT <- DT %>% 
+RV <- RV %>% 
   filter(prov!= "FE")
 
 
@@ -121,15 +121,25 @@ RV <- tm_shape(ITA)+tm_fill("white")+tm_borders("gray")+
 library(sjPlot)
 ###RV----
 
-fit2 <- stan_glmer(P ~  Yperiod+ Ageclass+(1|codaz)+offset(log(Conferiti)), 
+fitRV <- stan_glmer(P ~  Yperiod+ Ageclass+(1|codaz)+offset(log(Conferiti)), 
                    family="poisson", data = RV, seed = 123, control = list(adapt_delta = 0.99),
                    cores = 8)
-fitRV <- fit2
+fitRV <-  
 rm(fit2)
 saveRDS(fitRV, "RVmodel.RDS")
 fitRV <- readRDS("RVmodel.RDS")
 
- 
+
+fitRVint <- stan_glmer(P ~  Yperiod+ Ageclass+Yperiod*Ageclass+(1|codaz)+offset(log(Conferiti)), 
+                    family="poisson", data = RV, seed = 123, control = list(adapt_delta = 0.99),
+                    cores = 8)
+
+
+a <- loo(fitRV)
+b <- loo(fitRVint)
+
+loo_compare(a,b)
+
 
 tRV <- describe_posterior(
  fitRV,
@@ -289,8 +299,16 @@ tRVA %>%
   gt() %>% 
   gtsave("RVA.rtf")
 
+fitRVAint <- stan_glmer(P ~  Yperiod+ Ageclass+ Yperiod*Ageclass+(1|codaz)+offset(log(Conferiti)), 
+                     family="poisson", data = RVA, seed = 123, control = list(adapt_delta = 0.99),
+                     cores = 8)
 
 
+a <- loo(fitRVA)
+
+b <- loo(fitRVAint)
+
+loo_compare(a, b)
 
 
 plot_model(fitRVA, type = "est",show.values = TRUE,  value.offset = .3,show.intercept = T) +
@@ -988,10 +1006,9 @@ tPEDV <- describe_posterior(
 tPEDV %>% 
   select(Parameter, Median, CI_low, CI_high, pd, ROPE_Percentage, Rhat, ESS) %>%
   mutate_at(2:8, round, 2) %>% 
-  mutate(Parameter = str_remove(Parameter, "Yperiod"), 
-         Median = round(exp(Median),2), 
-         CI_low = round(exp(CI_low), 2), 
-         CI_high = round(exp(CI_high),2))%>% 
+  Parameter	Incidence Rate Ratio 
+(Median of posterior distribution)	CI_low	CI_high	pd	ROPE_%	Rhat	ESS
+
   gt() %>% 
   gtsave("PEDV.rtf")
 
