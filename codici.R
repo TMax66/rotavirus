@@ -124,8 +124,7 @@ library(sjPlot)
 fitRV <- stan_glmer(P ~  Yperiod+ Ageclass+(1|codaz)+offset(log(Conferiti)), 
                    family="poisson", data = RV, seed = 123, control = list(adapt_delta = 0.99),
                    cores = 8)
-fitRV <-  
-rm(fit2)
+ 
 saveRDS(fitRV, "RVmodel.RDS")
 fitRV <- readRDS("RVmodel.RDS")
 
@@ -858,15 +857,15 @@ Clostr <- dt %>%
          Yperiod = relevel(Yperiod, ref = "Summer"),
          prov = substr(codaz, 4,5), 
          Ageclass = factor(ageclass), 
-         Ageclass = relevel(Ageclass, ref = "ingrasso")
+         Ageclass = relevel(Ageclass, ref = "svezzamento")
   ) %>% 
   select(-Neg)%>% 
-  filter(prov!= "FE" & ageclass == "sottoscrofa")  
+  filter(prov!= "FE" & ageclass %in% c("sottoscrofa", "svezzamento"))  
 
 
 
 
-fitClostr <- stan_glmer(Pos ~  Yperiod+ RVA+RVB+RVC+RVH+(1|codaz)+offset(log(Conferiti)), 
+fitClostr <- stan_glmer(Pos ~  Yperiod+ RVA+RVB+RVC+RVH+Ageclass+(1|codaz)+offset(log(Conferiti)), 
                         family="poisson", data = Clostr, seed = 123, control = list(adapt_delta = 0.99),
                         cores = 8)
 
@@ -885,8 +884,9 @@ tClostr <- describe_posterior(
 
 tClostr %>% 
   select(Parameter, Median, CI_low, CI_high, pd, ROPE_Percentage, Rhat, ESS) %>%
-  mutate_at(2:8, round, 2) %>% 
-  mutate(Parameter = str_remove(Parameter, "Yperiod"), 
+  mutate_at(2:8, round, 2) %>% View()
+  mutate(Parameter = str_remove(Parameter,"Yperiod"), 
+         Parameter = str_remove(Parameter,"Ageclass"),
          Median = round(exp(Median),2), 
          CI_low = round(exp(CI_low), 2), 
          CI_high = round(exp(CI_high),2))%>% 
@@ -985,9 +985,9 @@ PEDV<- dt %>%
          Ageclass = relevel(Ageclass, ref = "ingrasso")
   ) %>% 
   select(-Neg)%>% 
-  filter(prov!= "FE" & !ageclass %in% c("sottoscrofa", "svezzamento"))
+  filter(prov!= "FE" )
 
-fitPEDV <- stan_glmer(Pos ~  Yperiod+ RVA+RVB+RVC+RVH+(1|codaz)+offset(log(Conferiti)), 
+fitPEDV <- stan_glmer(Pos ~  Yperiod+ RVA+RVB+RVC+RVH+Ageclass+(1|codaz)+offset(log(Conferiti)), 
                       family="poisson", data = PEDV, seed = 123, control = list(adapt_delta = 0.99),
                       cores = 8)
 
@@ -1006,11 +1006,16 @@ tPEDV <- describe_posterior(
 tPEDV %>% 
   select(Parameter, Median, CI_low, CI_high, pd, ROPE_Percentage, Rhat, ESS) %>%
   mutate_at(2:8, round, 2) %>% 
-  Parameter	Incidence Rate Ratio 
-(Median of posterior distribution)	CI_low	CI_high	pd	ROPE_%	Rhat	ESS
-
+  mutate(Parameter = str_remove(Parameter, "Yperiod"), 
+         Parameter = str_remove(Parameter, "Ageclass"),
+         Median = round(exp(Median),2), 
+         CI_low = round(exp(CI_low), 2), 
+         CI_high = round(exp(CI_high),2))%>% 
   gt() %>% 
   gtsave("PEDV.rtf")
+
+ 
+
 
 
 # ##modello binomiale---
