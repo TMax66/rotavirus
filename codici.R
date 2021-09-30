@@ -884,7 +884,7 @@ tClostr <- describe_posterior(
 
 tClostr %>% 
   select(Parameter, Median, CI_low, CI_high, pd, ROPE_Percentage, Rhat, ESS) %>%
-  mutate_at(2:8, round, 2) %>% View()
+  mutate_at(2:8, round, 2) %>%  
   mutate(Parameter = str_remove(Parameter,"Yperiod"), 
          Parameter = str_remove(Parameter,"Ageclass"),
          Median = round(exp(Median),2), 
@@ -984,14 +984,14 @@ PEDV<- dt %>%
          Ageclass = factor(ageclass), 
          Ageclass = relevel(Ageclass, ref = "ingrasso")
   ) %>% 
-  select(-Neg)%>% 
+  select(-Neg)%>%  
   filter(prov!= "FE" )
 
-fitPEDV <- stan_glmer(Pos ~  Yperiod+ RVA+RVB+RVC+RVH+Ageclass+(1|codaz)+offset(log(Conferiti)), 
+fitPEDV <- stan_glmer(Pos ~  Yperiod+RVA+RVB+RVC+RVH+Ageclass+(1|codaz)+offset(log(Conferiti)), 
                       family="poisson", data = PEDV, seed = 123, control = list(adapt_delta = 0.99),
                       cores = 8)
 
-saveRDS(fitLaws, "fitPEDV.RDS")
+saveRDS(fitPEDV, "fitPEDV.RDS")
 
 fitPEDV<- readRDS("fitPEDV.RDS")
 
