@@ -25,7 +25,7 @@ RV <- dt %>%
          Yperiod = relevel(Yperiod, ref = "Summer"),
          prov = substr(codaz, 4,5), 
          Ageclass = factor(ageclass), 
-         Ageclass = relevel(Ageclass, ref = "ingrasso")
+         Ageclass = relevel(Ageclass, ref = "svezzamento")
          ) %>% 
   select(-N)
 
@@ -129,15 +129,15 @@ saveRDS(fitRV, "RVmodel.RDS")
 fitRV <- readRDS("RVmodel.RDS")
 
 
-fitRVint <- stan_glmer(P ~  Yperiod+ Ageclass+Yperiod*Ageclass+(1|codaz)+offset(log(Conferiti)), 
-                    family="poisson", data = RV, seed = 123, control = list(adapt_delta = 0.99),
-                    cores = 8)
-
-
-a <- loo(fitRV)
-b <- loo(fitRVint)
-
-loo_compare(a,b)
+# fitRVint <- stan_glmer(P ~  Yperiod+ Ageclass+Yperiod*Ageclass+(1|codaz)+offset(log(Conferiti)), 
+#                     family="poisson", data = RV, seed = 123, control = list(adapt_delta = 0.99),
+#                     cores = 8)
+# 
+# 
+# a <- loo(fitRV)
+# b <- loo(fitRVint)
+# 
+# loo_compare(a,b)
 
 
 tRV <- describe_posterior(

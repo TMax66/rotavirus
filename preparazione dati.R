@@ -34,4 +34,5 @@ dt <- dati %>%
           quart = quarter(dtprelievo,fiscal_start = 11), 
           stagione = ifelse(quart==1, "Winter", 
                             ifelse(quart==2, "Spring", 
-                                   ifelse(quart==3, "Summer", "Autumn"))))
+                                   ifelse(quart==3, "Summer", "Autumn")))) %>% 
+  filter(ageclass != "riproduttore")
