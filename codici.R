@@ -5,8 +5,8 @@ source("preparazione dati.R")
 
 ##Modelli di poisson-----
 RV <- dt %>% 
-  group_by(codaz, year, month, ageclass,  RV) %>% count() %>% 
-  pivot_wider(names_from = "RV", values_from ="n", values_fill = 0 ) %>% 
+  group_by(codaz, year, month, ageclass,  RV) %>% count() %>%  
+  pivot_wider(names_from = "RV", values_from ="n", values_fill = 0 ) %>%  
   mutate(Conferiti = P+N, 
          YPeriod = recode(month, 
                           "01" = "Winter", 
@@ -27,7 +27,7 @@ RV <- dt %>%
          Ageclass = factor(ageclass), 
          Ageclass = relevel(Ageclass, ref = "svezzamento")
          ) %>% 
-  select(-N)
+  select(-N) 
 
 RV <- RV %>% 
   filter(prov!= "FE")
@@ -119,7 +119,9 @@ RV <- tm_shape(ITA)+tm_fill("white")+tm_borders("gray")+
 
 
 library(sjPlot)
-###RV----
+
+
+#RV----
 
 fitRV <- stan_glmer(P ~  Yperiod+ Ageclass+(1|codaz)+offset(log(Conferiti)), 
                    family="poisson", data = RV, seed = 123, control = list(adapt_delta = 0.99),
@@ -128,16 +130,6 @@ fitRV <- stan_glmer(P ~  Yperiod+ Ageclass+(1|codaz)+offset(log(Conferiti)),
 saveRDS(fitRV, "RVmodel.RDS")
 fitRV <- readRDS("RVmodel.RDS")
 
-
-# fitRVint <- stan_glmer(P ~  Yperiod+ Ageclass+Yperiod*Ageclass+(1|codaz)+offset(log(Conferiti)), 
-#                     family="poisson", data = RV, seed = 123, control = list(adapt_delta = 0.99),
-#                     cores = 8)
-# 
-# 
-# a <- loo(fitRV)
-# b <- loo(fitRVint)
-# 
-# loo_compare(a,b)
 
 
 tRV <- describe_posterior(
@@ -158,7 +150,37 @@ tRV %>%
                 CI_high = round(exp(CI_high),2))%>% 
   gt() %>% 
   gtsave("RV.rtf")
+
+
+
+p1<- p %>%
+  ggplot(aes(y=value, x = Parameter))+
+  stat_halfeye() +
+  coord_flip()+
+  geom_hline(yintercept = 0 )+
+  annotate(geom = "text", label="97.73%",
+           x=5.4,
+           y=-0.17,size=3.5, col = "blue")+
+  annotate(geom = "text", label="86.75%",
+           x=4.4,
+           y=-0.104,size=3.5,col = "blue")+
   
+  annotate(geom = "text", label="90.01%",
+           x=3.4,
+           y=-0.12,size=3.5,col = "blue")+
+  
+  annotate(geom = "text", label="81.42%",
+           x=2.4,
+           y=-0.09,size=3.5,col = "blue")+
+  
+  annotate(geom = "text", label="88.01%",
+           x=1.4,
+           y=0.107,size=3.5,col = "blue")+
+  
+  theme_ggeffects()
+
+
+p1+ gridExtra::tableGrob(tRV)
   
  
 
@@ -241,7 +263,7 @@ tRV %>%
 p <- p_direction(fit2)
 pd_to_p(0.9615)
 
-###RVA----
+#RVA----
 
 RVA <- dt %>% 
   group_by(codaz, year, month, ageclass,  RVA) %>% count() %>%  
@@ -264,7 +286,7 @@ RVA <- dt %>%
          Yperiod = relevel(Yperiod, ref = "Summer"),
          prov = substr(codaz, 4,5), 
          Ageclass = factor(ageclass), 
-         Ageclass = relevel(Ageclass, ref = "ingrasso")
+         Ageclass = relevel(Ageclass, ref = "svezzamento")
   ) %>% 
   select(-N ) 
  
@@ -329,7 +351,7 @@ plot(p_direction(fitRVA))+scale_fill_brewer(palette="Blues")+
   theme_ipsum_rc()
 
 
-#RVA modello per mappa
+##RVA modello per mappa
 
 RVAmp <- stan_glmer(P ~ 0+prov+(1|codaz)+offset(log(Conferiti)), 
                    family="poisson", data = RVA, seed = 123, control = list(adapt_delta = 0.99),
@@ -400,7 +422,7 @@ RVA <- tm_shape(ITA)+tm_fill("white")+tm_borders("gray")+
 
 
 
-###RVB----
+#RVB----
 RVB <- dt %>% 
   group_by(codaz, year, month, ageclass,  RVB) %>% count() %>%  
   pivot_wider(names_from = "RVB", values_from ="n", values_fill = 0 ) %>% 
@@ -422,16 +444,47 @@ RVB <- dt %>%
          Yperiod = relevel(Yperiod, ref = "Summer"),
          prov = substr(codaz, 4,5), 
          Ageclass = factor(ageclass), 
-         Ageclass = relevel(Ageclass, ref = "ingrasso")
+         Ageclass = relevel(Ageclass, ref = "svezzamento")
   ) %>% 
   select(-N )
-          
- 
 
 RVB <- RVB %>% 
   filter(prov!= "FE")
-  
-RVBmp <- stan_glmer(P ~ 0+prov+(1|codaz)+offset(log(Conferiti)), 
+
+fitRVB <- stan_glmer(P ~  Yperiod+ Ageclass+(1|codaz)+offset(log(Conferiti)), 
+                     family="poisson", data = RVB, seed = 123, control = list(adapt_delta = 0.99),
+                     cores = 8)
+saveRDS(fitRVB, "fitRVB.RDS")
+fitRVB <- readRDS("fitRVB.RDS")
+
+tRVB <- describe_posterior(
+  fitRVB,
+  centrality = "median",
+  test = c("rope", "p_direction"), 
+  rope_range = c(-0.1, 0.1)
+)
+
+tRVB %>% 
+  select(Parameter, Median, CI_low, CI_high, pd, ROPE_Percentage, Rhat, ESS) %>%
+  mutate_at(2:8, round, 2) %>% 
+  mutate(Parameter = str_remove(Parameter, "Yperiod"), 
+         Parameter = str_remove(Parameter, "Ageclass"),
+         Median = round(exp(Median),2), 
+         CI_low = round(exp(CI_low), 2), 
+         CI_high = round(exp(CI_high),2))%>% 
+  gt() %>% 
+  gtsave("RVB.rtf")
+
+
+
+
+
+
+
+
+
+##MAPPA
+RVBmp <- stan_glmer(P ~ 0+ prov+(1|codaz)+offset(log(Conferiti)), 
                     family="poisson", data = RVB, seed = 123, control = list(adapt_delta = 0.99),
                     cores = 8)
 
@@ -494,34 +547,12 @@ RVB <- tm_shape(ITA)+tm_fill("white")+tm_borders("gray")+
   tm_scale_bar(breaks = c(0, 50, 100), text.size = .5,position = "left")+
   tm_compass(type = "8star", position = c("right", "bottom")) 
 
-fitRVB <- stan_glmer(P ~  Yperiod+ Ageclass+(1|codaz)+offset(log(Conferiti)), 
-                     family="poisson", data = RVB, seed = 123, control = list(adapt_delta = 0.99),
-                     cores = 8)
-saveRDS(fitRVB, "fitRVB.RDS")
-fitRVB <- readRDS("fitRVB.RDS")
-
-tRVB <- describe_posterior(
-  fitRVB,
-  centrality = "median",
-  test = c("rope", "p_direction"), 
-  rope_range = c(-0.1, 0.1)
-)
- 
-tRVB %>% 
-  select(Parameter, Median, CI_low, CI_high, pd, ROPE_Percentage, Rhat, ESS) %>%
-  mutate_at(2:8, round, 2) %>% 
-  mutate(Parameter = str_remove(Parameter, "Yperiod"), 
-         Parameter = str_remove(Parameter, "Ageclass"),
-         Median = round(exp(Median),2), 
-         CI_low = round(exp(CI_low), 2), 
-         CI_high = round(exp(CI_high),2))%>% 
-  gt() %>% 
-  gtsave("RVB.rtf")
 
 
 
 
-###RVC----
+
+#RVC----
 RVC <- dt %>% 
   group_by(codaz, year, month, ageclass,  RVC) %>% count() %>%  
   pivot_wider(names_from = "RVC", values_from ="n", values_fill = 0 ) %>% 
@@ -543,7 +574,7 @@ RVC <- dt %>%
          Yperiod = relevel(Yperiod, ref = "Summer"),
          prov = substr(codaz, 4,5), 
          Ageclass = factor(ageclass), 
-         Ageclass = relevel(Ageclass, ref = "ingrasso")
+         Ageclass = relevel(Ageclass, ref = "svezzamento")
   ) %>% 
   select(-N )
  
@@ -551,6 +582,34 @@ RVC <- dt %>%
 RVC <- RVC %>% 
   filter(prov!= "FE")
 
+fitRVC <- stan_glmer(P ~  Yperiod+ Ageclass+(1|codaz)+offset(log(Conferiti)), 
+                     family="poisson", data = RVC, seed = 123, control = list(adapt_delta = 0.99),
+                     cores = 8)
+saveRDS(fitRVC, "fitRVCmodel.RDS")
+fitRVC <- readRDS("fitRVCmodel.RDS")
+
+tRVC <- describe_posterior(
+  fitRVC,
+  centrality = "median",
+  test = c("rope", "p_direction"), 
+  rope_range = c(-0.1, 0.1)
+)
+
+
+tRVC %>% 
+  select(Parameter, Median, CI_low, CI_high, pd, ROPE_Percentage, Rhat, ESS) %>%
+  mutate_at(2:8, round, 2) %>% 
+  mutate(Parameter = str_remove(Parameter, "Yperiod"), 
+         Parameter = str_remove(Parameter, "Ageclass"),
+         Median = round(exp(Median),2), 
+         CI_low = round(exp(CI_low), 2), 
+         CI_high = round(exp(CI_high),2))%>% 
+  gt() %>% 
+  gtsave("RVC.rtf")
+
+
+
+##Mappa
 RVCmp <- stan_glmer(P ~ 0+prov+(1|codaz)+offset(log(Conferiti)), 
                     family="poisson", data = RVC, seed = 123, control = list(adapt_delta = 0.99),
                     cores = 8)
@@ -614,32 +673,9 @@ RVC <- tm_shape(ITA)+tm_fill("white")+tm_borders("gray")+
   tm_compass(type = "8star", position = c("right", "bottom")) 
 
 
-fitRVC <- stan_glmer(P ~  Yperiod+ Ageclass+(1|codaz)+offset(log(Conferiti)), 
-                     family="poisson", data = RVC, seed = 123, control = list(adapt_delta = 0.99),
-                     cores = 8)
-saveRDS(fitRVC, "fitRVCmodel.RDS")
-fitRVC <- readRDS("fitRVCmodel.RDS")
-
-tRVC <- describe_posterior(
-  fitRVC,
-  centrality = "median",
-  test = c("rope", "p_direction"), 
-  rope_range = c(-0.1, 0.1)
-)
 
 
-tRVC %>% 
-  select(Parameter, Median, CI_low, CI_high, pd, ROPE_Percentage, Rhat, ESS) %>%
-  mutate_at(2:8, round, 2) %>% 
-  mutate(Parameter = str_remove(Parameter, "Yperiod"), 
-         Parameter = str_remove(Parameter, "Ageclass"),
-         Median = round(exp(Median),2), 
-         CI_low = round(exp(CI_low), 2), 
-         CI_high = round(exp(CI_high),2))%>% 
-  gt() %>% 
-  gtsave("RVC.rtf")
-
-###RVH----
+#RVH----
 RVH <- dt %>% 
   group_by(codaz, year, month, ageclass,  RVH) %>% count() %>%  
   pivot_wider(names_from = "RVH", values_from ="n", values_fill = 0 ) %>% 
@@ -661,7 +697,7 @@ RVH <- dt %>%
          Yperiod = relevel(Yperiod, ref = "Summer"),
          prov = substr(codaz, 4,5), 
          Ageclass = factor(ageclass), 
-         Ageclass = relevel(Ageclass, ref = "ingrasso")
+         Ageclass = relevel(Ageclass, ref = "svezzamento")
   ) %>% 
   
   select(-N)
@@ -669,6 +705,33 @@ RVH <- dt %>%
 RVH <- RVH %>% 
   filter(prov!= "FE")
 
+
+fitRVH <- stan_glmer(P ~  Yperiod+ Ageclass+(1|codaz)+offset(log(Conferiti)), 
+                     family="poisson", data = RVH, seed = 123, control = list(adapt_delta = 0.99),
+                     cores = 8)
+saveRDS(fitRVH, "fitRVH.RDS")
+fitRVH <- readRDS("fitRVH.RDS")
+
+tRVH <- describe_posterior(
+  fitRVH,
+  centrality = "median",
+  test = c("rope", "p_direction"), 
+  rope_range = c(-0.1, 0.1)
+)
+
+
+tRVH %>% 
+  select(Parameter, Median, CI_low, CI_high, pd, ROPE_Percentage, Rhat, ESS) %>%
+  mutate_at(2:8, round, 2) %>% 
+  mutate(Parameter = str_remove(Parameter, "Yperiod"), 
+         Parameter = str_remove(Parameter, "Ageclass"),
+         Median = round(exp(Median),2), 
+         CI_low = round(exp(CI_low), 2), 
+         CI_high = round(exp(CI_high),2))%>% 
+  gt() %>% 
+  gtsave("RVH.rtf")
+
+##mappa
 RVHmp <- stan_glmer(P ~ 0+prov+(1|codaz)+offset(log(Conferiti)), 
                     family="poisson", data = RVH, seed = 123, control = list(adapt_delta = 0.99),
                     cores = 8)
@@ -731,30 +794,6 @@ RVH <- tm_shape(ITA)+tm_fill("white")+tm_borders("gray")+
   tm_compass(type = "8star", position = c("right", "bottom")) 
 
 
-fitRVH <- stan_glmer(P ~  Yperiod+ Ageclass+(1|codaz)+offset(log(Conferiti)), 
-                     family="poisson", data = RVH, seed = 123, control = list(adapt_delta = 0.99),
-                     cores = 8)
-saveRDS(fitRVH, "fitRVH.RDS")
-fitRVH <- readRDS("fitRVH.RDS")
-
-tRVH <- describe_posterior(
-  fitRVH,
-  centrality = "median",
-  test = c("rope", "p_direction"), 
-  rope_range = c(-0.1, 0.1)
-)
-
- 
-tRVH %>% 
-  select(Parameter, Median, CI_low, CI_high, pd, ROPE_Percentage, Rhat, ESS) %>%
-  mutate_at(2:8, round, 2) %>% 
-  mutate(Parameter = str_remove(Parameter, "Yperiod"), 
-         Parameter = str_remove(Parameter, "Ageclass"),
-         Median = round(exp(Median),2), 
-         CI_low = round(exp(CI_low), 2), 
-         CI_high = round(exp(CI_high),2))%>% 
-  gt() %>% 
-  gtsave("RVH.rtf")
 
 
 
