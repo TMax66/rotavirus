@@ -140,8 +140,8 @@ tRV <- describe_posterior(
 
  
 tRV %>% 
-  select(Parameter, Median, CI_low, CI_high, pd, ROPE_Percentage, Rhat, ESS) %>%
-  mutate_at(2:8, round, 2) %>% 
+  select(Parameter, Median, CI_low, CI_high, pd) %>%
+  mutate_at(2:4, round, 2) %>% 
   mutate(Parameter = str_remove(Parameter, "Yperiod"), 
          Parameter = str_remove(Parameter, "Ageclass"),
         Parameter = str_remove(Parameter, "Yperiod"), 
@@ -151,9 +151,10 @@ tRV %>%
   gt() %>% 
   gtsave("RV.rtf")
 
+p <- plot(fitRV, "hist", regex_pars = c("YPeriod", "Age"))+geom_vline(xintercept = 0, col = "red")
 
-
-p1<- p %>%
+p<-p[["data"]]
+p1<- p%>%
   ggplot(aes(y=value, x = Parameter))+
   stat_halfeye() +
   coord_flip()+
@@ -180,7 +181,17 @@ p1<- p %>%
   theme_ggeffects()
 
 
-p1+ gridExtra::tableGrob(tRV)
+t <- tRV %>% 
+  select(Parameter, Median, CI_low, CI_high, pd) %>%
+  mutate_at(2:4, round, 2) %>% 
+  mutate(Parameter = str_remove(Parameter, "Yperiod"), 
+         Parameter = str_remove(Parameter, "Ageclass"),
+         Parameter = str_remove(Parameter, "Yperiod"), 
+         Median = round(exp(Median),2), 
+         CI_low = round(exp(CI_low), 2), 
+         CI_high = round(exp(CI_high),2))
+
+p1+ gridExtra::tableGrob(t)
   
  
 
