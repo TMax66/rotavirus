@@ -5,8 +5,8 @@ source("preparazione dati.R")
 
 ##Modelli di poisson-----
 RV <- dt %>% 
-  group_by(codaz, year, month, ageclass,  RV) %>% count() %>%  
-  pivot_wider(names_from = "RV", values_from ="n", values_fill = 0 ) %>%  
+  group_by(codaz, year, month, ageclass,  RV) %>% count() %>% 
+  pivot_wider(names_from = "RV", values_from ="n", values_fill = 0 ) %>%   View() 
   mutate(Conferiti = P+N, 
          YPeriod = recode(month, 
                           "01" = "Winter", 
@@ -147,7 +147,7 @@ tRV %>%
         Parameter = str_remove(Parameter, "Yperiod"), 
                 Median = round(exp(Median),2), 
                 CI_low = round(exp(CI_low), 2), 
-                CI_high = round(exp(CI_high),2))%>% 
+                CI_high = round(exp(CI_high),2))%>% View()
   gt() %>% 
   gtsave("RV.rtf")
 
@@ -301,6 +301,7 @@ RVA <- dt %>%
   ) %>% 
   select(-N ) 
  
+
 
 RVA <- RVA %>% 
   filter(prov!= "FE")
